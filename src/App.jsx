@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useAuth } from "./hooks/useAuth";
+import Login from "./components/Login";
 
 /* ═══════════════════════════════════════════════════════════════════
    NEXO v4.1 — Seguimiento Comercial · Federación Patronal Retiro
@@ -335,7 +337,7 @@ const NAV_ITEMS = [
   {id:"metricas", ico:"◎",label:"Métricas"},
 ];
 
-function Sidebar({tab,onTab,cnt,esps}) {
+function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
   return <aside style={{width:210,flexShrink:0,background:T.s1,borderRight:`1px solid ${T.bd}`,
     display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,userSelect:"none"}}>
     {/* Logo */}
@@ -350,6 +352,12 @@ function Sidebar({tab,onTab,cnt,esps}) {
           <div style={{fontSize:9,color:T.t3,letterSpacing:".14em",textTransform:"uppercase"}}>Retiro · FP</div>
         </div>
       </div>
+      {onSignOut&&
+        <button onClick={onSignOut} style={{marginTop:14,width:"100%",padding:"7px 10px",
+          borderRadius:7,border:`1px solid ${T.bd}`,background:"transparent",
+          color:T.t2,fontFamily:"inherit",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+          Cerrar sesión
+        </button>}
     </div>
 
     {/* Nav */}
@@ -1270,6 +1278,7 @@ function ModalNuevo({onGuardar,onCerrar}) {
 
 // ─── APP ROOT ─────────────────────────────────────────────────────
 export default function App() {
+  const { user, loading, signOut } = useAuth();
   const [esps,setEsps]=useState(DEMO);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
@@ -1284,6 +1293,17 @@ export default function App() {
   const agregar=e=>{setEsps(p=>[e,...p]);setShowN(false);showToast("✅",`${e.nombre} agregado`);};
   const verE=e=>setSelec(e);
 
+  if (loading) {
+    return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",
+      justifyContent:"center",background:T.bg,color:T.t2,fontFamily:"'Inter',sans-serif"}}>
+      Cargando...
+    </div>;
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
     :tab==="equipo"?<PanelEquipo esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
@@ -1292,7 +1312,7 @@ export default function App() {
   return <div style={{display:"flex",height:"100vh",
     fontFamily:"'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif",
     background:T.bg,color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
-    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);}} cnt={cntAlertas} esps={esps}/>
+    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
       <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vista}</div>
       {selec&&<PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar}/>}
