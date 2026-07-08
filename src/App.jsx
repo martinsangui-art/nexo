@@ -3,9 +3,15 @@ import { useAuth } from "./hooks/useAuth";
 import { useEspecialistas } from "./hooks/useEspecialistas";
 import { useContactos } from "./hooks/useContactos";
 import { useOrganizadores } from "./hooks/useOrganizadores";
+import { usePolizas } from "./hooks/usePolizas";
+import { useOrganizadorCodigos } from "./hooks/useOrganizadorCodigos";
+import { useOrganizadorKpis } from "./hooks/useOrganizadorKpis";
 import { supabase } from "./lib/supabase";
 import { importarPolizasDesdeExcel } from "./lib/importarPolizas";
+import { importarSignosDesdeZip } from "./lib/importarSignos";
+import { calcularIndicePenetracion, calcularOportunidad, calcularFaltantes, ultimoPeriodo } from "./lib/fuerzaComercial";
 import Login from "./components/Login";
+import FichaOrganizador from "./components/FichaOrganizador";
 import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS } from "./lib/ui.jsx";
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -354,7 +360,7 @@ function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
 }
 
 // ─── DASHBOARD ───────────────────────────────────────────────────
-function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp}) {
+function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
   const totP  = esps.reduce((s,e)=>s+e.avance.polizas,0);
   const objP  = esps.reduce((s,e)=>s+e.plan.polizasObj,0);
   const totPr = esps.reduce((s,e)=>s+e.avance.prima,0);
@@ -377,13 +383,14 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp}) {
     </div>
 
     {/* KPI strip */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
       {[
         {l:"Pólizas",v:totP,sub:`obj ${objP}`,c:T.azul,   p:pct(totP,objP)},
         {l:"Prima",  v:fmt$(totPr),sub:`obj ${fmt$(objPr)}`,c:T.verde, p:pct(totPr,objPr)},
         {l:"En ritmo",v:enR,sub:`de ${esps.length} esp.`,c:T.verde,p:null},
         {l:"Atrasados",v:atr,sub:"requieren acción",c:T.rojo,p:null},
         {l:"Rescates",v:res,sub:"última semana",c:res>0?T.rojo:T.t3,p:null},
+        {l:"Oportunidad sin explotar",v:fmt$(oportunidadTotal||0),sub:"fuerza comercial",c:oportunidadTotal>0?T.verde:T.t3,p:null},
       ].map(k=><Card key={k.l} style={{padding:"16px 18px",position:"relative",overflow:"hidden",
           borderTop:"2px solid "+T.azul}}>
         <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{k.l}</div>
@@ -649,18 +656,29 @@ function TarjetaEsp({e,onPress}) {
 }
 
 // ─── ORGANIZACIONES ──────────────────────────────────────────────
-function PanelOrganizaciones({organizadores,loading,error,onNuevo,onImportar,importando}) {
+function PanelOrganizaciones({organizadoresConDatos,loading,error,onNuevo,onImportar,importando,onImportarSignos,importandoSignos,faltantes,onVer}) {
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
       <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
-        Organizaciones <span style={{fontSize:14,fontWeight:400,color:T.t3}}>({organizadores.length})</span>
+        Organizaciones <span style={{fontSize:14,fontWeight:400,color:T.t3}}>({organizadoresConDatos.length})</span>
       </div>
       <div style={{display:"flex",gap:8}}>
         <BtnS onClick={onImportar} style={importando?{opacity:.6,pointerEvents:"none"}:{}}>
           {importando?"Importando...":"⇪ Importar pólizas (Excel)"}</BtnS>
+        <BtnS onClick={onImportarSignos} style={importandoSignos?{opacity:.6,pointerEvents:"none"}:{}}>
+          {importandoSignos?"Importando...":"⇪ Importar Signos (ZIP)"}</BtnS>
         <BtnP onClick={onNuevo}>＋ Nueva organización</BtnP>
       </div>
     </div>
+
+    {faltantes.length>0 && <Card style={{padding:"12px 16px",marginBottom:16,borderLeft:`3px solid ${T.ambar}`}}>
+      <div style={{fontSize:12,fontWeight:800,color:T.ambar,marginBottom:4}}>
+        ⚠️ {faltantes.length} organizador{faltantes.length>1?"es":""} con pólizas de retiro sin reporte Signos este período
+      </div>
+      <div style={{fontSize:11,color:T.t2,lineHeight:1.6}}>
+        {faltantes.map(f=>f.razonSocial).join(" · ")} — revisar si falta pedir el reporte o si son productores fuera de la estructura habitual.
+      </div>
+    </Card>}
 
     {loading ? (
       <Card style={{padding:48,textAlign:"center"}}>
@@ -670,16 +688,26 @@ function PanelOrganizaciones({organizadores,loading,error,onNuevo,onImportar,imp
       <Card style={{padding:48,textAlign:"center"}}>
         <div style={{fontSize:13,color:T.rojo}}>Error al cargar organizaciones: {error.message}</div>
       </Card>
-    ) : organizadores.length===0 ? (
+    ) : organizadoresConDatos.length===0 ? (
       <Card style={{padding:48,textAlign:"center"}}>
         <div style={{fontSize:13,color:T.t3}}>No hay organizaciones cargadas todavía</div>
       </Card>
     ) : (
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
-        {organizadores.map(o=>
-          <Card key={o.id} style={{padding:"14px 16px"}}>
-            <div style={{fontWeight:800,fontSize:14,color:T.t1}}>{o.razon_social}</div>
-            <div style={{fontSize:11,color:T.t3,marginTop:4}}>{o.zona||"Sin zona"}</div>
+        {organizadoresConDatos.map(o=>
+          <Card key={o.id} style={{padding:"14px 16px",cursor:"pointer"}} onClick={()=>onVer(o)}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:800,fontSize:14,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.razon_social}</div>
+                <div style={{fontSize:11,color:T.t3,marginTop:4}}>{o.zona||"Sin zona"}</div>
+              </div>
+              {o.enFaltantes && <span title="Sin reporte Signos este período" style={{fontSize:13,flexShrink:0}}>⚠️</span>}
+            </div>
+            {o.primaSgArt!=null && <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${T.bd}`,
+              display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:10,color:T.t3}}>Índice {o.indice ?? "—"}</span>
+              {o.oportunidad>0 && <span style={{fontSize:12,fontWeight:800,color:T.verde}}>{fmt$(o.oportunidad)} oport.</span>}
+            </div>}
           </Card>)}
       </div>
     )}
@@ -1382,14 +1410,80 @@ export default function App() {
   const { especialistas, loading: espLoading, error: espError, refetch } = useEspecialistas();
   const { contactos: contactosDB, refetch: refetchContactos } = useContactos();
   const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador, refetch: refetchOrganizadores } = useOrganizadores();
+  const { polizas, refetch: refetchPolizas } = usePolizas();
+  const { organizadorCodigos, refetch: refetchOrganizadorCodigos } = useOrganizadorCodigos();
+  const { organizadorKpis, refetch: refetchOrganizadorKpis } = useOrganizadorKpis();
   const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
+  const [selecOrg,setSelecOrg]=useState(null);
   const [showN,setShowN]=useState(false);
   const [showOrgN,setShowOrgN]=useState(false);
   const [toast,setToast]=useState(null);
   const [importando,setImportando]=useState(false);
+  const [importandoSignos,setImportandoSignos]=useState(false);
   const fileImportRef=useRef(null);
+  const fileSignosRef=useRef(null);
+
+  // Cruce Signos ↔ pólizas de retiro (sección 5 de la spec de Fuerza Comercial):
+  // índice de penetración, oportunidad en pesos y detección de organizadores
+  // sin reporte Signos en el período más reciente.
+  const periodoActual = useMemo(()=>ultimoPeriodo(organizadorKpis),[organizadorKpis]);
+
+  const datosPorOrganizador = useMemo(()=>{
+    const mapa = new Map();
+    for(const o of organizadores) mapa.set(o.id,{primaSgArt:null,primaRetiro:0,indice:null,oportunidad:0,codigos:[]});
+    for(const c of organizadorCodigos){
+      const e = mapa.get(c.organizador_id);
+      if(e) e.codigos.push(c);
+    }
+    for(const p of polizas){
+      if(p.organizador_id==null) continue;
+      const e = mapa.get(p.organizador_id);
+      if(e) e.primaRetiro += Number(p.premio_anualizado)||0;
+    }
+    if(periodoActual){
+      for(const k of organizadorKpis){
+        if(k.periodo!==periodoActual||k.ramo!=="generales_art"||k.tipo_reporte!=="organizador") continue;
+        const e = mapa.get(k.organizador_id);
+        if(e) e.primaSgArt = k.prima_anualizada;
+      }
+    }
+    let indiceBenchmark = 0;
+    for(const e of mapa.values()){
+      if(e.primaSgArt>0){
+        e.indice = calcularIndicePenetracion(e.primaRetiro,e.primaSgArt);
+        if(e.indice>indiceBenchmark) indiceBenchmark = e.indice;
+      }
+    }
+    for(const e of mapa.values()){
+      if(e.primaSgArt>0) e.oportunidad = calcularOportunidad(e.primaSgArt,indiceBenchmark,e.primaRetiro);
+    }
+    return { mapa, indiceBenchmark };
+  },[organizadores,organizadorCodigos,organizadorKpis,polizas,periodoActual]);
+
+  const faltantes = useMemo(()=>{
+    if(!periodoActual) return [];
+    const cubiertos = new Set(organizadorKpis.filter(k=>k.periodo===periodoActual).map(k=>k.organizador_id));
+    const codigosCubiertos = organizadorCodigos.filter(c=>cubiertos.has(c.organizador_id)).map(c=>c.codigo_signos);
+    return calcularFaltantes({polizas,organizadorCodigos,codigosCubiertos}).map(f=>({
+      ...f,
+      razonSocial: organizadores.find(o=>o.id===f.organizadorId)?.razon_social || "?",
+    }));
+  },[polizas,organizadorCodigos,organizadorKpis,organizadores,periodoActual]);
+
+  const faltantesOrgIds = useMemo(()=>new Set(faltantes.map(f=>f.organizadorId)),[faltantes]);
+
+  const organizadoresConDatos = useMemo(()=>{
+    const {mapa} = datosPorOrganizador;
+    return [...organizadores]
+      .map(o=>({...o, ...(mapa.get(o.id)||{}), enFaltantes:faltantesOrgIds.has(o.id)}))
+      .sort((a,b)=>(b.oportunidad||0)-(a.oportunidad||0) || a.razon_social.localeCompare(b.razon_social));
+  },[organizadores,datosPorOrganizador,faltantesOrgIds]);
+
+  const oportunidadTotal = useMemo(()=>
+    [...datosPorOrganizador.mapa.values()].reduce((s,e)=>s+(e.oportunidad||0),0),
+  [datosPorOrganizador]);
 
   useEffect(()=>{
     const conContactosReales = especialistas.map(e=>({
@@ -1505,7 +1599,38 @@ export default function App() {
     }
   }
 
-  const verE=e=>setSelec(e);
+  async function manejarArchivoSignos(ev) {
+    const file = ev.target.files?.[0];
+    ev.target.value = ""; // permite reimportar el mismo archivo si hace falta
+    if (!file) return;
+
+    setImportandoSignos(true);
+    try {
+      const resumen = await importarSignosDesdeZip(file, { supabase, profileId: user.id });
+      if (resumen.totalPdfs === 0) {
+        alert("El ZIP no tiene ningún PDF.");
+        return;
+      }
+      const orgMsg = resumen.organizadoresCreados.length
+        ? ` · ${resumen.organizadoresCreados.length} organización(es) nueva(s): ${resumen.organizadoresCreados.map(o=>o.razonSocial).join(", ")}`
+        : "";
+      const erroresMsg = resumen.erroresParseo.length ? ` · ${resumen.erroresParseo.length} PDF no se pudo leer` : "";
+      showToast("✅", `${resumen.kpisImportados} KPI(s) importados de ${resumen.totalPdfs} PDF(s)${orgMsg}${erroresMsg}`);
+      if (resumen.erroresParseo.length) console.warn("PDFs no parseados:", resumen.erroresParseo);
+      if (resumen.avisos.length) console.warn("Avisos del importador Signos:", resumen.avisos);
+      refetchOrganizadorKpis();
+      refetchOrganizadorCodigos();
+      if (resumen.organizadoresCreados.length) refetchOrganizadores();
+    } catch (err) {
+      console.error('Error al importar Signos:', err);
+      alert('No se pudo completar la importación: ' + err.message);
+    } finally {
+      setImportandoSignos(false);
+    }
+  }
+
+  const verE=e=>{setSelec(e);setSelecOrg(null);};
+  const verOrg=o=>{setSelecOrg(o);setSelec(null);};
 
   if (authLoading) {
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",
@@ -1518,23 +1643,29 @@ export default function App() {
     return <Login />;
   }
 
-  const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)} loadingEsp={espLoading} errorEsp={espError}/>
+  const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)} loadingEsp={espLoading} errorEsp={espError} oportunidadTotal={oportunidadTotal}/>
     :tab==="equipo"?<PanelEquipo esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
-    :tab==="organizaciones"?<PanelOrganizaciones organizadores={organizadores} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)} onImportar={()=>fileImportRef.current?.click()} importando={importando}/>
+    :tab==="organizaciones"?<PanelOrganizaciones organizadoresConDatos={organizadoresConDatos} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)} onImportar={()=>fileImportRef.current?.click()} importando={importando} onImportarSignos={()=>fileSignosRef.current?.click()} importandoSignos={importandoSignos} faltantes={faltantes} onVer={verOrg}/>
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
     :<PanelMetricas esps={esps} onVer={verE}/>;
 
   return <div style={{display:"flex",height:"100vh",
     fontFamily:"'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif",
     background:T.bg,color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
-    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
+    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
       <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vista}</div>
       {selec&&<PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar} onContacto={agregarContacto} organizadores={organizadores}/>}
+      {selecOrg&&<FichaOrganizador organizador={selecOrg} codigos={selecOrg.codigos||[]}
+        kpisOrg={organizadorKpis.filter(k=>k.organizador_id===selecOrg.id)}
+        polizasOrg={polizas.filter(p=>p.organizador_id===selecOrg.id)}
+        indiceBenchmark={datosPorOrganizador.indiceBenchmark} enFaltantes={selecOrg.enFaltantes}
+        onCerrar={()=>setSelecOrg(null)}/>}
     </div>
     {showN&&<ModalNuevo onGuardar={agregar} onCerrar={()=>setShowN(false)} organizadores={organizadores}/>}
     {showOrgN&&<ModalNuevaOrganizacion onGuardar={crearOrganizacion} onCerrar={()=>setShowOrgN(false)}/>}
     <input ref={fileImportRef} type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={manejarArchivoPolizas}/>
+    <input ref={fileSignosRef} type="file" accept=".zip" style={{display:"none"}} onChange={manejarArchivoSignos}/>
     {toast&&<div style={{position:"fixed",bottom:22,right:22,background:T.s2,
       border:`1px solid ${T.bd}`,borderRadius:9,padding:"11px 16px",display:"flex",
       alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.45)",
