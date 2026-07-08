@@ -1,0 +1,133 @@
+import { parseSignosZip } from "./parseSignosZip";
+
+// Resuelve organizador_id para un código Signos: primero busca en
+// organizador_codigos (fuente de verdad, resuelve casos como BAROFFIO con dos
+// códigos); si no está, busca por razón social (case-insensitive) por si el
+// organizador ya existe pero todavía no tiene código Signos registrado; si
+// tampoco, crea el organizador y su código. Solo se llama para reportes tipo
+// "organizador" — un reporte "productor" nunca crea un organizador nuevo,
+// porque no trae la razón social del organizador dueño, solo su código de
+// referencia (ver comentario en parseSignosZip.js).
+async function resolverOrganizador(supabase, profileId, codigo, nombre, mapaCodigoOrg, organizadoresPorNombre) {
+  if (mapaCodigoOrg.has(codigo)) return { organizadorId: mapaCodigoOrg.get(codigo), creado: false };
+
+  const nombreNorm = nombre.trim().toLowerCase();
+  if (organizadoresPorNombre.has(nombreNorm)) {
+    const organizadorId = organizadoresPorNombre.get(nombreNorm);
+    const { error } = await supabase
+      .from("organizador_codigos")
+      .insert([{ organizador_id: organizadorId, codigo_signos: codigo, es_principal: false,
+        nota: "Código Signos vinculado automáticamente por coincidencia de razón social." }]);
+    if (error) throw new Error(`No se pudo vincular el código ${codigo} a "${nombre}": ${error.message}`);
+    mapaCodigoOrg.set(codigo, organizadorId);
+    return { organizadorId, creado: false };
+  }
+
+  const { data: org, error: errOrg } = await supabase
+    .from("organizadores")
+    .insert([{ profile_id: profileId, razon_social: nombre }])
+    .select()
+    .single();
+  if (errOrg) throw new Error(`No se pudo crear el organizador "${nombre}" (código ${codigo}): ${errOrg.message}`);
+
+  const { error: errCod } = await supabase
+    .from("organizador_codigos")
+    .insert([{ organizador_id: org.id, codigo_signos: codigo, es_principal: true }]);
+  if (errCod) throw new Error(`No se pudo registrar el código ${codigo} para "${nombre}": ${errCod.message}`);
+
+  mapaCodigoOrg.set(codigo, org.id);
+  organizadoresPorNombre.set(nombreNorm, org.id);
+  return { organizadorId: org.id, creado: true };
+}
+
+// Punto de entrada del importador: recibe un File (.zip con PDFs Signos) y hace
+// todo el flujo — parsear cada PDF, resolver/crear organizadores, y upsert a
+// organizador_kpis_generales. Solo los reportes tipo "organizador" generan filas
+// de KPIs (ver nota en la migración); los reportes tipo "productor" solo sirven
+// para resolver/crear el organizador dueño si hiciera falta y para la
+// reconciliación de cobertura (que se calcula aparte, con calcularFaltantes).
+export async function importarSignosDesdeZip(file, { supabase, profileId }) {
+  const buffer = await file.arrayBuffer();
+  const { reportes, errores: erroresParseo } = await parseSignosZip(buffer);
+
+  if (!reportes.length) {
+    return { totalPdfs: 0, kpisImportados: 0, organizadoresCreados: [], codigosCubiertos: [], erroresParseo };
+  }
+
+  const { data: codigosExistentes, error: errCodigos } = await supabase
+    .from("organizador_codigos")
+    .select("codigo_signos, organizador_id");
+  if (errCodigos) throw new Error(`No se pudieron leer los códigos de organizador existentes: ${errCodigos.message}`);
+  const mapaCodigoOrg = new Map(codigosExistentes.map((c) => [c.codigo_signos, c.organizador_id]));
+
+  const { data: organizadoresExistentes, error: errOrgs } = await supabase
+    .from("organizadores")
+    .select("id, razon_social");
+  if (errOrgs) throw new Error(`No se pudieron leer los organizadores existentes: ${errOrgs.message}`);
+  const organizadoresPorNombre = new Map(
+    organizadoresExistentes.map((o) => [o.razon_social.trim().toLowerCase(), o.id])
+  );
+
+  const organizadoresCreados = [];
+  const codigosCubiertos = [];
+  const filasKpi = [];
+  const avisos = [];
+
+  // Los reportes tipo "organizador" primero: pueden crear organizadores nuevos
+  // que un reporte "productor" del mismo lote necesite para resolverse.
+  const ordenados = [...reportes].sort((a, b) => (a.tipo_reporte === "organizador" ? -1 : 1));
+
+  for (const reporte of ordenados) {
+    if (reporte.tipo_reporte === "organizador") {
+      const { organizadorId, creado } = await resolverOrganizador(
+        supabase, profileId, reporte.codigoOrganizador, reporte.nombre, mapaCodigoOrg, organizadoresPorNombre
+      );
+      if (creado) organizadoresCreados.push({ codigo: reporte.codigoOrganizador, razonSocial: reporte.nombre, organizadorId });
+      codigosCubiertos.push(reporte.codigoOrganizador);
+
+      for (const row of reporte.rows) {
+        filasKpi.push({
+          organizador_id: organizadorId,
+          periodo: reporte.periodo,
+          ramo: row.ramo,
+          tipo_reporte: "organizador",
+          productores: row.productores,
+          asegurados: row.asegurados,
+          polizas: row.polizas,
+          certificados: row.certificados,
+          prima_anualizada: row.prima_anualizada,
+          siniestralidad: row.siniestralidad,
+          frecuencia_siniestral: row.frecuencia_siniestral,
+          fuente_archivo: reporte.fuente_archivo,
+        });
+      }
+    } else {
+      if (mapaCodigoOrg.has(reporte.codigoOrganizador)) {
+        codigosCubiertos.push(reporte.codigoOrganizador);
+      } else {
+        avisos.push(
+          `"${reporte.fuente_archivo}": reporte de productor bajo el organizador ${reporte.codigoOrganizador}, ` +
+          `pero ese organizador no está registrado (no vino su propio reporte en este lote) — se ignora.`
+        );
+      }
+    }
+  }
+
+  let kpisImportados = 0;
+  if (filasKpi.length) {
+    const { error } = await supabase
+      .from("organizador_kpis_generales")
+      .upsert(filasKpi, { onConflict: "organizador_id,periodo,ramo" });
+    if (error) throw new Error(`Error al guardar KPIs de fuerza comercial: ${error.message}`);
+    kpisImportados = filasKpi.length;
+  }
+
+  return {
+    totalPdfs: reportes.length + erroresParseo.length,
+    kpisImportados,
+    organizadoresCreados,
+    codigosCubiertos,
+    erroresParseo,
+    avisos,
+  };
+}
