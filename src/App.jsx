@@ -4,6 +4,7 @@ import { useEspecialistas } from "./hooks/useEspecialistas";
 import { useContactos } from "./hooks/useContactos";
 import { useOrganizadores } from "./hooks/useOrganizadores";
 import { supabase } from "./lib/supabase";
+import { importarPolizasDesdeExcel } from "./lib/importarPolizas";
 import Login from "./components/Login";
 import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS } from "./lib/ui.jsx";
 
@@ -648,13 +649,17 @@ function TarjetaEsp({e,onPress}) {
 }
 
 // ─── ORGANIZACIONES ──────────────────────────────────────────────
-function PanelOrganizaciones({organizadores,loading,error,onNuevo}) {
+function PanelOrganizaciones({organizadores,loading,error,onNuevo,onImportar,importando}) {
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
       <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
         Organizaciones <span style={{fontSize:14,fontWeight:400,color:T.t3}}>({organizadores.length})</span>
       </div>
-      <BtnP onClick={onNuevo}>＋ Nueva organización</BtnP>
+      <div style={{display:"flex",gap:8}}>
+        <BtnS onClick={onImportar} style={importando?{opacity:.6,pointerEvents:"none"}:{}}>
+          {importando?"Importando...":"⇪ Importar pólizas (Excel)"}</BtnS>
+        <BtnP onClick={onNuevo}>＋ Nueva organización</BtnP>
+      </div>
     </div>
 
     {loading ? (
@@ -1376,13 +1381,15 @@ export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { especialistas, loading: espLoading, error: espError, refetch } = useEspecialistas();
   const { contactos: contactosDB, refetch: refetchContactos } = useContactos();
-  const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador } = useOrganizadores();
+  const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador, refetch: refetchOrganizadores } = useOrganizadores();
   const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
   const [showN,setShowN]=useState(false);
   const [showOrgN,setShowOrgN]=useState(false);
   const [toast,setToast]=useState(null);
+  const [importando,setImportando]=useState(false);
+  const fileImportRef=useRef(null);
 
   useEffect(()=>{
     const conContactosReales = especialistas.map(e=>({
@@ -1473,6 +1480,31 @@ export default function App() {
     showToast("✅",`${datosNuevaOrg.razon_social} agregada`);
   }
 
+  async function manejarArchivoPolizas(ev) {
+    const file = ev.target.files?.[0];
+    ev.target.value = ""; // permite reimportar el mismo archivo si hace falta
+    if (!file) return;
+
+    setImportando(true);
+    try {
+      const resumen = await importarPolizasDesdeExcel(file, { supabase, profileId: user.id });
+      if (resumen.total === 0) {
+        alert("El archivo no tiene filas con número de póliza válido.");
+        return;
+      }
+      const orgMsg = resumen.organizadoresCreados.length
+        ? ` · ${resumen.organizadoresCreados.length} organización(es) nueva(s): ${resumen.organizadoresCreados.map(o=>o.razonSocial).join(", ")}`
+        : "";
+      showToast("✅", `${resumen.insertadas} de ${resumen.total} pólizas importadas${orgMsg}`);
+      if (resumen.organizadoresCreados.length) refetchOrganizadores();
+    } catch (err) {
+      console.error('Error al importar pólizas:', err);
+      alert('No se pudo completar la importación: ' + err.message);
+    } finally {
+      setImportando(false);
+    }
+  }
+
   const verE=e=>setSelec(e);
 
   if (authLoading) {
@@ -1488,7 +1520,7 @@ export default function App() {
 
   const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)} loadingEsp={espLoading} errorEsp={espError}/>
     :tab==="equipo"?<PanelEquipo esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
-    :tab==="organizaciones"?<PanelOrganizaciones organizadores={organizadores} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)}/>
+    :tab==="organizaciones"?<PanelOrganizaciones organizadores={organizadores} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)} onImportar={()=>fileImportRef.current?.click()} importando={importando}/>
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
     :<PanelMetricas esps={esps} onVer={verE}/>;
 
@@ -1502,6 +1534,7 @@ export default function App() {
     </div>
     {showN&&<ModalNuevo onGuardar={agregar} onCerrar={()=>setShowN(false)} organizadores={organizadores}/>}
     {showOrgN&&<ModalNuevaOrganizacion onGuardar={crearOrganizacion} onCerrar={()=>setShowOrgN(false)}/>}
+    <input ref={fileImportRef} type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={manejarArchivoPolizas}/>
     {toast&&<div style={{position:"fixed",bottom:22,right:22,background:T.s2,
       border:`1px solid ${T.bd}`,borderRadius:9,padding:"11px 16px",display:"flex",
       alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.45)",
