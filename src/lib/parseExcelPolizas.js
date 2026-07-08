@@ -75,5 +75,27 @@ export async function parseExcelPolizas(arrayBuffer) {
     );
   }
 
-  return parsed;
+  // El Excel real trae algunas filas exactamente duplicadas (mismo número de
+  // póliza repetido, ej. exportaciones con overlap). Un batch con el mismo
+  // numero_poliza dos veces rompe el upsert entero (Postgres: "ON CONFLICT DO
+  // UPDATE command cannot affect row a second time") — se deduplica acá, no en
+  // el importador, para que loggear/depurar quede en un solo lugar.
+  const vistos = new Set();
+  const duplicadas = [];
+  const sinDuplicados = parsed.filter((fila) => {
+    if (vistos.has(fila.numero_poliza)) {
+      duplicadas.push(fila.numero_poliza);
+      return false;
+    }
+    vistos.add(fila.numero_poliza);
+    return true;
+  });
+
+  if (duplicadas.length) {
+    console.warn(
+      `parseExcelPolizas: se descartaron ${duplicadas.length} fila(s) duplicada(s) (mismo número de póliza repetido: ${duplicadas.join(", ")})`
+    );
+  }
+
+  return sinDuplicados;
 }

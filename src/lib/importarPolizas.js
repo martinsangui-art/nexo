@@ -19,8 +19,11 @@ const enLotes = (arr, tam) => {
 // Nota: la resolución es por código Signos, no por razón social — es el
 // discriminador confiable (ver comentario en la migración sobre organizadores
 // que operan bajo más de un código).
+// El código 0 significa "sin organizador asignado" (pólizas de venta directa
+// de la compañía o similar — a confirmar con sistemas, ver spec) y nunca debe
+// generar un organizador propio: esas filas quedan con organizador_id null.
 async function resolverOrganizadores(supabase, profileId, filas) {
-  const codigos = [...new Set(filas.map(f => f.codigo_org_origen).filter(c => c != null))];
+  const codigos = [...new Set(filas.map(f => f.codigo_org_origen).filter(c => c != null && c !== 0))];
   const mapa = new Map(); // codigo_signos -> organizador_id
   const creados = [];
 
