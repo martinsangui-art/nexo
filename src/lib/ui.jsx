@@ -40,8 +40,8 @@ export const Av = ({n,color,size=36}) =>
     justifyContent:"center",fontSize:Math.round(size*.3),fontWeight:900,color,letterSpacing:"-.5px"}}>
     {inic(n)}</div>;
 
-export const Card = ({children,style={},sig=false}) =>
-  <div style={{background:T.s2,borderRadius:10,border:`1px solid ${T.bd}`,
+export const Card = ({children,style={},sig=false,...rest}) =>
+  <div {...rest} style={{background:T.s2,borderRadius:10,border:`1px solid ${T.bd}`,
     fontFamily:"'Inter',-apple-system,sans-serif",
     ...(sig?{borderTop:`2px solid ${T.azul}`}:{}),
     ...style}}>{children}</div>;
