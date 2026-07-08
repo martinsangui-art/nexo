@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { useEspecialistas } from "./hooks/useEspecialistas";
+import { useContactos } from "./hooks/useContactos";
+import { useOrganizadores } from "./hooks/useOrganizadores";
+import { supabase } from "./lib/supabase";
 import Login from "./components/Login";
+import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS } from "./lib/ui.jsx";
 
 /* ═══════════════════════════════════════════════════════════════════
    NEXO v4.1 — Seguimiento Comercial · Federación Patronal Retiro
@@ -34,54 +39,17 @@ if (typeof document !== "undefined" && !document.getElementById("nexo-font")) {
   document.head.appendChild(style);
 }
 
-// ─── TOKENS ──────────────────────────────────────────────────────
-// Paleta definitiva: azul FP como identidad, semánticos para estados
-const T = {
-  // Superficies — 5 niveles de profundidad azul marino
-  bg:"#070B14",  // fondo raíz
-  s1:"#0C1020",  // sidebar y paneles principales
-  s2:"#111828",  // tarjetas
-  s3:"#172035",  // elementos elevados / hover
-  s4:"#1E2840",  // inputs y badges
-
-  // Bordes — sutiles, nunca decorativos
-  bd:"#1E2D45",
-  bd2:"#263654",
-
-  // Acento único — azul FP institucional elevado
-  // #003087 original FP → elevado a eléctrico para pantallas oscuras
-  azul:"#1A56F0",   // acento primario — botones, acciones, activo
-  azulL:"#4B7BF5",  // highlights e interacciones
-  azulD:"#0D3DB8",  // hover de botones
-  azulS:"rgba(26,86,240,0.11)",  // fondos de estado activo
-
-  // Semánticos — SOLO para estados, nunca decorativos
-  verde:"#10B981",  verdeS:"rgba(16,185,129,0.11)",
-  ambar:"#F59E0B",  ambarS:"rgba(245,158,11,0.11)",
-  rojo:"#EF4444",   rojoS:"rgba(239,68,68,0.11)",
-
-  // Texto — off-white con tinte azul frío, nunca blanco puro
-  t1:"#EEF2FF",  // primario
-  t2:"#6B82A8",  // secundario / labels
-  t3:"#334166",  // terciario / deshabilitado
-  t4:"#1A2540",  // casi invisible
-
-  // Firma visual: línea superior en tarjetas clave
-  // Se aplica como borderTop: `2px solid ${T.azul}`
-  lineaFP: "2px solid #1A56F0",
-};
-
-// ─── HELPERS ─────────────────────────────────────────────────────
+// ─── HELPERS (especialista-específicos; T/fmt/Card/etc viven en ./lib/ui.jsx) ──
 const HOY   = new Date();
 const ds    = (d=0) => { const x=new Date(HOY); x.setDate(HOY.getDate()+d); return x.toISOString().slice(0,10); };
-const fmt$  = n => n==null?"—":n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${Math.round(n/1e3)}k`:`$${Math.round(n)}`;
-const fmtN  = n => n?.toLocaleString("es-AR") ?? "—";
-const fmtD  = d => d?new Date(d).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"2-digit"}):"—";
-const fmtDc = d => d?new Date(d).toLocaleDateString("es-AR",{day:"2-digit",month:"short"}):"—";
-const pct   = (a,b) => b>0?Math.min(Math.round(a/b*100),100):0;
 const dH    = d => d?Math.ceil((new Date(d)-HOY)/86400000):null;
-const dD    = d => d?Math.floor((HOY-new Date(d))/86400000):999;
-const inic  = n => (n||"").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const dD    = d => {
+  if(!d) return 999;
+  const hoyDia = new Date(HOY.getFullYear(),HOY.getMonth(),HOY.getDate());
+  const f = new Date(d);
+  const fDia = new Date(f.getFullYear(),f.getMonth(),f.getDate());
+  return Math.max(0,Math.round((hoyDia-fDia)/86400000));
+};
 
 // Semáforo: brecha entre % tiempo consumido y % objetivo alcanzado
 const sem = e => {
@@ -134,7 +102,27 @@ const alertas = e => {
   return r.sort((a,b)=>a.p-b.p);
 };
 
-// ─── DATOS DEMO ──────────────────────────────────────────────────
+// Completa con valores por defecto los campos que la tabla real de Supabase
+// (nombre, zona, activo) todavía no tiene, para que el resto de la UI
+// (pensada para el shape de DEMO) no rompa al recibir especialistas reales.
+const normalizarEspecialista = e => ({
+  ...e,
+  org: e.org ?? e.zona ?? "",
+  tel: e.tel ?? "",
+  email: e.email ?? "",
+  notas: e.notas ?? "",
+  plan: e.plan ?? {desc:"",fechaInicio:null,fechaFin:null,polizasObj:0,primaObj:0,comPct:0},
+  avance: e.avance ?? {polizas:0,prima:0,comision:0,rescates:0,ultimaAct:null},
+  historialAvance: e.historialAvance ?? [],
+  contactos: e.contactos ?? [],
+  inconvenientes: e.inconvenientes ?? "",
+  estrategia: e.estrategia ?? "",
+  mails: e.mails ?? 0,
+});
+
+// DEMO: datos mock originales, comentados — reemplazados por useEspecialistas().
+// Se dejan acá por si hace falta volver atrás rápido para revisar diseño visual.
+/*
 const DEMO = [
   {
     id:1, nombre:"Laura Gómez", org:"ORGANIZACION BIGATTON S.A.",
@@ -226,22 +214,17 @@ const DEMO = [
     mails:1,
   },
 ];
+*/
 
-const TIPOS = [{id:"llamada",e:"📞",l:"Llamada"},{id:"whatsapp",e:"💬",l:"WhatsApp"},
-               {id:"email",e:"✉️",l:"Email"},{id:"reunion",e:"🤝",l:"Reunión"},{id:"visita",e:"🚗",l:"Visita"}];
+// Los "id" son los valores válidos que acepta el check constraint
+// contactos_canal_check en Supabase — deben ir en minúscula sin tilde.
+const TIPOS = [{id:"email",e:"✉️",l:"Email"},{id:"whatsapp",e:"💬",l:"WhatsApp"},
+               {id:"llamada",e:"📞",l:"Llamada"},{id:"presencial",e:"🤝",l:"Presencial"},
+               {id:"video",e:"🎥",l:"Video"},{id:"agencia",e:"🏢",l:"Agencia"},
+               {id:"oficina",e:"🏬",l:"Oficina"},{id:"comision",e:"💼",l:"Comisión"}];
 const TIPO_E = Object.fromEntries(TIPOS.map(t=>[t.id,t.e]));
 
-// ─── ÁTOMOS ──────────────────────────────────────────────────────
-const Barra = ({val,tot,color,h=6,animated=true}) => {
-  const p = tot>0?Math.min(val/tot*100,100):val;
-  return <div style={{background:T.s4,borderRadius:h,height:h,overflow:"hidden"}}>
-    <div style={{width:`${p}%`,height:"100%",borderRadius:h,
-      background:`linear-gradient(90deg,${color}88,${color})`,
-      boxShadow:`0 0 8px ${color}44`,
-      transition:animated?"width .6s cubic-bezier(.4,0,.2,1)":"none"}}/>
-  </div>;
-};
-
+// ─── ÁTOMOS (especialista-específicos; Barra/Card/Sec/etc en ./lib/ui.jsx) ──
 // Sparkline SVG — visualiza tendencia de pólizas
 const Spark = ({data,color,w=80,h=28}) => {
   if(!data||data.length<2) return <span style={{fontSize:11,color:T.t3}}>—</span>;
@@ -296,45 +279,13 @@ const SemTag = ({e,sm}) => {
   </span>;
 };
 
-const Av = ({n,color,size=36}) =>
-  <div style={{width:size,height:size,borderRadius:Math.round(size*.25),flexShrink:0,
-    background:`${color}18`,border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",
-    justifyContent:"center",fontSize:Math.round(size*.3),fontWeight:900,color,letterSpacing:"-.5px"}}>
-    {inic(n)}</div>;
-
-const Card = ({children,style={},sig=false}) =>
-  <div style={{background:T.s2,borderRadius:10,border:`1px solid ${T.bd}`,
-    fontFamily:"'Inter',-apple-system,sans-serif",
-    ...(sig?{borderTop:`2px solid ${T.azul}`}:{}),
-    ...style}}>{children}</div>;
-
-const Sec = ({children,color}) =>
-  <div style={{fontSize:10,fontWeight:800,color:color||T.t3,textTransform:"uppercase",
-    letterSpacing:".1em",marginBottom:10}}>{children}</div>;
-
-const Inp = ({value,onChange,type="text",placeholder,style={}}) =>
-  <input type={type} value={value??""} placeholder={placeholder} onChange={e=>onChange(e.target.value)}
-    style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.bd2}`,borderRadius:8,fontSize:14,
-      fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:T.s3,color:T.t1,...style}}/>;
-
-const BtnP = ({children,onClick,color,style={},sm}) =>
-  <button onClick={onClick} style={{padding:sm?"7px 13px":"9px 18px",border:"none",borderRadius:8,
-    fontFamily:"inherit",fontSize:sm?12:13,fontWeight:700,cursor:"pointer",color:"#fff",
-    background:color||`linear-gradient(135deg,${T.azul},${T.azulL})`,
-    boxShadow:`0 3px 10px ${(color||T.azul)}44`,whiteSpace:"nowrap",...style}}>
-    {children}</button>;
-
-const BtnS = ({children,onClick,style={}}) =>
-  <button onClick={onClick} style={{padding:"8px 16px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
-    background:"transparent",color:T.t2,fontSize:13,fontWeight:600,cursor:"pointer",
-    fontFamily:"inherit",...style}}>{children}</button>;
-
 // ─── SIDEBAR ─────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  {id:"dashboard",ico:"▦",label:"Dashboard"},
-  {id:"equipo",   ico:"◈",label:"Equipo"},
-  {id:"alertas",  ico:"◉",label:"Alertas"},
-  {id:"metricas", ico:"◎",label:"Métricas"},
+  {id:"dashboard",       ico:"▦",label:"Dashboard"},
+  {id:"equipo",          ico:"◈",label:"Equipo"},
+  {id:"organizaciones",  ico:"▣",label:"Organizaciones"},
+  {id:"alertas",         ico:"◉",label:"Alertas"},
+  {id:"metricas",        ico:"◎",label:"Métricas"},
 ];
 
 function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
@@ -402,7 +353,7 @@ function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
 }
 
 // ─── DASHBOARD ───────────────────────────────────────────────────
-function Dashboard({esps,onVer,onNuevo}) {
+function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp}) {
   const totP  = esps.reduce((s,e)=>s+e.avance.polizas,0);
   const objP  = esps.reduce((s,e)=>s+e.plan.polizasObj,0);
   const totPr = esps.reduce((s,e)=>s+e.avance.prima,0);
@@ -450,6 +401,15 @@ function Dashboard({esps,onVer,onNuevo}) {
         <div style={{fontSize:11,fontWeight:700,color:T.t3,textTransform:"uppercase",
           letterSpacing:".08em",marginBottom:10}}>Especialistas · progreso del período</div>
         <Card>
+          {loadingEsp ? (
+            <div style={{padding:24,textAlign:"center",color:T.t3,fontSize:13}}>Cargando especialistas...</div>
+          ) : errorEsp ? (
+            <div style={{padding:24,textAlign:"center",color:T.rojo,fontSize:13}}>
+              Error al cargar especialistas: {errorEsp.message}
+            </div>
+          ) : esps.length===0 ? (
+            <div style={{padding:24,textAlign:"center",color:T.t3,fontSize:13}}>No hay especialistas cargados todavía</div>
+          ) : (
           <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
             <thead>
               <tr style={{borderBottom:`1px solid ${T.bd}`}}>
@@ -505,6 +465,7 @@ function Dashboard({esps,onVer,onNuevo}) {
               })}
             </tbody>
           </table></div>
+          )}
         </Card>
       </div>
 
@@ -686,6 +647,72 @@ function TarjetaEsp({e,onPress}) {
   </Card>;
 }
 
+// ─── ORGANIZACIONES ──────────────────────────────────────────────
+function PanelOrganizaciones({organizadores,loading,error,onNuevo}) {
+  return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
+        Organizaciones <span style={{fontSize:14,fontWeight:400,color:T.t3}}>({organizadores.length})</span>
+      </div>
+      <BtnP onClick={onNuevo}>＋ Nueva organización</BtnP>
+    </div>
+
+    {loading ? (
+      <Card style={{padding:48,textAlign:"center"}}>
+        <div style={{fontSize:13,color:T.t3}}>Cargando organizaciones...</div>
+      </Card>
+    ) : error ? (
+      <Card style={{padding:48,textAlign:"center"}}>
+        <div style={{fontSize:13,color:T.rojo}}>Error al cargar organizaciones: {error.message}</div>
+      </Card>
+    ) : organizadores.length===0 ? (
+      <Card style={{padding:48,textAlign:"center"}}>
+        <div style={{fontSize:13,color:T.t3}}>No hay organizaciones cargadas todavía</div>
+      </Card>
+    ) : (
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+        {organizadores.map(o=>
+          <Card key={o.id} style={{padding:"14px 16px"}}>
+            <div style={{fontWeight:800,fontSize:14,color:T.t1}}>{o.razon_social}</div>
+            <div style={{fontSize:11,color:T.t3,marginTop:4}}>{o.zona||"Sin zona"}</div>
+          </Card>)}
+      </div>
+    )}
+  </div>;
+}
+
+function ModalNuevaOrganizacion({onGuardar,onCerrar}) {
+  const [razonSocial,setRazonSocial]=useState("");
+  const [zona,setZona]=useState("");
+  const Label=({t})=><label style={{display:"block",fontSize:10,color:T.t3,fontWeight:700,
+    textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>{t}</label>;
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",display:"flex",
+    alignItems:"center",justifyContent:"center",zIndex:300,backdropFilter:"blur(4px)"}}>
+    <div style={{background:T.s1,borderRadius:13,padding:26,width:440,
+      border:`1px solid ${T.bd}`,boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{fontSize:17,fontWeight:900,color:T.t1}}>Nueva organización</div>
+        <button onClick={onCerrar} style={{background:T.s3,border:"none",color:T.t2,
+          width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:13}}>✕</button>
+      </div>
+      <div style={{marginBottom:10}}>
+        <Label t="Razón social *"/>
+        <Inp value={razonSocial} onChange={setRazonSocial}/>
+      </div>
+      <div style={{marginBottom:10}}>
+        <Label t="Zona"/>
+        <Inp value={zona} onChange={setZona} placeholder="Opcional"/>
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end"}}>
+        <BtnS onClick={onCerrar}>Cancelar</BtnS>
+        <BtnP onClick={()=>{if(!razonSocial.trim())return;
+          onGuardar({razon_social:razonSocial,zona:zona||null});}}>
+          Crear organización</BtnP>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─── ALERTAS ─────────────────────────────────────────────────────
 function PanelAlertas({esps,onVer}) {
   const todas=esps.flatMap(e=>alertas(e).map(a=>({...a,esp:e})));
@@ -831,7 +858,7 @@ function PanelMetricas({esps,onVer}) {
 }
 
 // ─── PANEL DETALLE (drawer derecho) ──────────────────────────────
-function PanelDetalle({esp,onCerrar,onGuardar}) {
+function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
   const [e,setE]=useState(esp);
   const [tab,setT]=useState("avance");
   const [showC,setSC]=useState(false);
@@ -844,17 +871,29 @@ function PanelDetalle({esp,onCerrar,onGuardar}) {
   const [fP,setFP]=useState({...esp.plan});
   const [showMail,setSM]=useState(false);
   const [fMail,setFM]=useState({asunto:"",cuerpo:""});
-  useEffect(()=>{setE(esp);setFI(esp.inconvenientes||"");setFE(esp.estrategia||"");setFP({...esp.plan});},[esp]);
+  const [showOrg,setSOrg]=useState(false);
+  const [fOrgId,setFOrgId]=useState(esp.organizador_id||"");
+  const [fExterno,setFExterno]=useState(esp.es_externo||false);
+  const [orgErr,setOrgErr]=useState(null);
+  useEffect(()=>{setE(esp);setFI(esp.inconvenientes||"");setFE(esp.estrategia||"");setFP({...esp.plan});
+    setFOrgId(esp.organizador_id||"");setFExterno(esp.es_externo||false);setOrgErr(null);},[esp]);
 
   const sync=u=>{setE(u);onGuardar(u);};
   const guardC=()=>{if(!fC.nota.trim())return;
     sync({...e,contactos:[{fecha:ds(0),tipo:fC.tipo,nota:fC.nota},...e.contactos]});
+    onContacto(e.id,{tipo:fC.tipo,nota:fC.nota});
     setFC({tipo:"llamada",nota:""});setSC(false);};
   const guardP=()=>{sync({...e,plan:{...fP,polizasObj:Number(fP.polizasObj),
     primaObj:Number(fP.primaObj),comPct:Number(fP.comPct)}});setEP(false);};
+  const guardOrg=()=>{
+    if(!fExterno && !fOrgId){setOrgErr('Elegí una organización o marcá "Es externo".');return;}
+    setOrgErr(null);
+    sync({...e,organizador_id:fExterno?null:fOrgId,es_externo:fExterno});
+    setSOrg(false);};
   const enviarMail=()=>{
     window.open(`mailto:${e.email}?subject=${encodeURIComponent(fMail.asunto)}&body=${encodeURIComponent(fMail.cuerpo)}`);
     sync({...e,mails:(e.mails||0)+1,contactos:[{fecha:ds(0),tipo:"email",nota:`Mail: "${fMail.asunto}"`},...e.contactos]});
+    onContacto(e.id,{tipo:"email",nota:`Mail: "${fMail.asunto}"`});
     setFM({asunto:"",cuerpo:""});setSM(false);};
 
   const s=sem(e), pp=pct(e.avance.polizas,e.plan.polizasObj);
@@ -1120,6 +1159,37 @@ function PanelDetalle({esp,onCerrar,onGuardar}) {
       {tab==="estrategia"&&<div>
         <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <Sec style={{marginBottom:0}}>Organización</Sec>
+            <button onClick={()=>setSOrg(!showOrg)} style={{fontSize:11,color:T.azulL,background:"transparent",
+              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              {showOrg?"Cancelar":"✏️ Editar"}</button>
+          </div>
+          {showOrg?<div>
+            <select value={fOrgId} disabled={fExterno} onChange={ev=>setFOrgId(ev.target.value)}
+              style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,fontSize:13,
+                fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:fExterno?T.s4:T.s3,
+                color:fExterno?T.t3:T.t1,opacity:fExterno?.6:1,marginBottom:8}}>
+              <option value="">Seleccionar organización...</option>
+              {organizadores.map(o=><option key={o.id} value={o.id}>{o.razon_social}</option>)}
+            </select>
+            <label style={{display:"flex",alignItems:"center",gap:7,marginBottom:8,cursor:"pointer"}}>
+              <input type="checkbox" checked={fExterno}
+                onChange={ev=>{const v=ev.target.checked;setFExterno(v);if(v)setFOrgId("");}}/>
+              <span style={{fontSize:12,color:T.t2}}>Es externo (sin organización)</span>
+            </label>
+            {orgErr&&<div style={{fontSize:11,color:T.rojo,marginBottom:8}}>{orgErr}</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+              <BtnS onClick={()=>{setSOrg(false);setFOrgId(e.organizador_id||"");setFExterno(e.es_externo||false);setOrgErr(null);}}>Cancelar</BtnS>
+              <BtnP onClick={guardOrg} color={T.verde}>✓ Guardar</BtnP>
+            </div>
+          </div>:(e.es_externo
+            ?<div style={{fontSize:12,color:T.t2}}>🔹 Externo (sin organización)</div>
+            :<div style={{fontSize:12,color:T.t2}}>
+              {organizadores.find(o=>o.id===e.organizador_id)?.razon_social || "Sin asignar"}
+            </div>)}
+        </div>
+        <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <Sec style={{marginBottom:0}}>Estrategia acordada</Sec>
             <button onClick={()=>setSE(!showE)} style={{fontSize:11,color:T.azulL,background:"transparent",
               border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
@@ -1215,9 +1285,11 @@ function PanelDetalle({esp,onCerrar,onGuardar}) {
 }
 
 // ─── MODAL NUEVO ─────────────────────────────────────────────────
-function ModalNuevo({onGuardar,onCerrar}) {
+function ModalNuevo({onGuardar,onCerrar,organizadores}) {
   const [f,setF]=useState({nombre:"",org:"",tel:"",email:"",notas:"",
+    organizadorId:"",esExterno:false,
     plan:{desc:"",fechaInicio:ds(0),fechaFin:"",polizasObj:"",primaObj:"",comPct:""}});
+  const [orgErr,setOrgErr]=useState(null);
   const sp=(k,v)=>setF(x=>({...x,plan:{...x.plan,[k]:v}}));
   const si=(k,v)=>setF(x=>({...x,[k]:v}));
   const Label=({t})=><label style={{display:"block",fontSize:10,color:T.t3,fontWeight:700,
@@ -1248,6 +1320,23 @@ function ModalNuevo({onGuardar,onCerrar}) {
               background:T.s3,color:T.t1,resize:"none"}}
             placeholder="Perfil, experiencia, observaciones..."/>
         </div>
+        <div style={{marginBottom:10}}>
+          <Label t="Organización real *"/>
+          <select value={f.organizadorId} disabled={f.esExterno}
+            onChange={ev=>si("organizadorId",ev.target.value)}
+            style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,fontSize:13,
+              fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:f.esExterno?T.s4:T.s3,
+              color:f.esExterno?T.t3:T.t1,opacity:f.esExterno?.6:1}}>
+            <option value="">Seleccionar organización...</option>
+            {organizadores.map(o=><option key={o.id} value={o.id}>{o.razon_social}</option>)}
+          </select>
+          <label style={{display:"flex",alignItems:"center",gap:7,marginTop:8,cursor:"pointer"}}>
+            <input type="checkbox" checked={f.esExterno}
+              onChange={ev=>{const v=ev.target.checked;si("esExterno",v);if(v)si("organizadorId","");}}/>
+            <span style={{fontSize:12,color:T.t2}}>Es externo (sin organización)</span>
+          </label>
+          {orgErr&&<div style={{fontSize:11,color:T.rojo,marginTop:6}}>{orgErr}</div>}
+        </div>
         <div style={{height:1,background:T.bd,margin:"4px 0 14px"}}/>
         <div style={{fontSize:10,fontWeight:800,color:T.azulL,textTransform:"uppercase",
           letterSpacing:".1em",marginBottom:12}}>Plan comercial</div>
@@ -1265,9 +1354,15 @@ function ModalNuevo({onGuardar,onCerrar}) {
       </div>
       <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end"}}>
         <BtnS onClick={onCerrar}>Cancelar</BtnS>
-        <BtnP onClick={()=>{if(!f.nombre)return;onGuardar({...f,id:Date.now(),inconvenientes:"",
+        <BtnP onClick={()=>{
+          if(!f.nombre)return;
+          if(!f.esExterno && !f.organizadorId){setOrgErr('Elegí una organización o marcá "Es externo".');return;}
+          setOrgErr(null);
+          onGuardar({...f,id:Date.now(),inconvenientes:"",
           estrategia:"",mails:0,contactos:[],historialAvance:[],
           avance:{polizas:0,prima:0,comision:0,rescates:0,ultimaAct:null},
+          organizador_id:f.esExterno?null:f.organizadorId,
+          es_externo:f.esExterno,
           plan:{...f.plan,polizasObj:Number(f.plan.polizasObj)||0,
             primaObj:Number(f.plan.primaObj)||0,comPct:Number(f.plan.comPct)||0}});}}>
           Crear especialista</BtnP>
@@ -1278,22 +1373,109 @@ function ModalNuevo({onGuardar,onCerrar}) {
 
 // ─── APP ROOT ─────────────────────────────────────────────────────
 export default function App() {
-  const { user, loading, signOut } = useAuth();
-  const [esps,setEsps]=useState(DEMO);
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { especialistas, loading: espLoading, error: espError, refetch } = useEspecialistas();
+  const { contactos: contactosDB, refetch: refetchContactos } = useContactos();
+  const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador } = useOrganizadores();
+  const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
   const [showN,setShowN]=useState(false);
+  const [showOrgN,setShowOrgN]=useState(false);
   const [toast,setToast]=useState(null);
+
+  useEffect(()=>{
+    const conContactosReales = especialistas.map(e=>({
+      ...e,
+      contactos: contactosDB
+        .filter(c=>c.especialista_id===e.id)
+        .map(c=>({fecha:c.fecha, tipo:c.canal, nota:c.notas})),
+    }));
+    setEsps(conContactosReales.map(normalizarEspecialista));
+  },[especialistas,contactosDB]);
 
   const cntAlertas=useMemo(()=>
     esps.flatMap(e=>alertas(e)).filter(a=>a.p<2).length,[esps]);
 
   const showToast=(ico,msg)=>{setToast({ico,msg});setTimeout(()=>setToast(null),3000);};
-  const guardar=e=>{setEsps(p=>p.map(x=>x.id===e.id?e:x));if(selec?.id===e.id)setSelec(e);};
-  const agregar=e=>{setEsps(p=>[e,...p]);setShowN(false);showToast("✅",`${e.nombre} agregado`);};
+
+  async function agregarContacto(especialistaId, {tipo, nota}) {
+    const { error } = await supabase
+      .from('contactos')
+      .insert([{
+        especialista_id: especialistaId,
+        canal: tipo,
+        notas: nota,
+        fecha: new Date().toISOString(),
+        profile_id: user.id,
+      }]);
+
+    if (error) {
+      console.error('Error al registrar contacto:', error);
+      alert('No se pudo registrar el contacto: ' + error.message);
+      return;
+    }
+
+    refetchContactos();
+  }
+
+  async function guardar(especialistaActualizado) {
+    const { id, nombre, zona, activo, organizador_id, es_externo } = especialistaActualizado;
+    const { error } = await supabase
+      .from('especialistas')
+      .update({ nombre, zona, activo, organizador_id, es_externo })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error al guardar cambios:', error);
+      alert('No se pudo guardar: ' + error.message);
+      return;
+    }
+
+    if (selec?.id === id) setSelec(especialistaActualizado);
+    refetch();
+  }
+
+  async function agregar(datosNuevoEspecialista) {
+    const { data, error } = await supabase
+      .from('especialistas')
+      .insert([{
+        nombre: datosNuevoEspecialista.nombre,
+        zona: datosNuevoEspecialista.zona,
+        activo: true,
+        profile_id: user.id,
+        organizador_id: datosNuevoEspecialista.organizador_id,
+        es_externo: datosNuevoEspecialista.es_externo,
+      }])
+      .select();
+
+    if (error) {
+      console.error('Error al agregar especialista:', error);
+      alert('No se pudo guardar: ' + error.message);
+      return;
+    }
+
+    setShowN(false);
+    showToast("✅",`${datosNuevoEspecialista.nombre} agregado`);
+    refetch();
+  }
+
+  async function crearOrganizacion(datosNuevaOrg) {
+    const { error } = await agregarOrganizador(datosNuevaOrg);
+
+    if (error) {
+      console.error('Error al agregar organización:', error);
+      alert('No se pudo guardar: ' + error.message);
+      return;
+    }
+
+    setShowOrgN(false);
+    showToast("✅",`${datosNuevaOrg.razon_social} agregada`);
+  }
+
   const verE=e=>setSelec(e);
 
-  if (loading) {
+  if (authLoading) {
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",
       justifyContent:"center",background:T.bg,color:T.t2,fontFamily:"'Inter',sans-serif"}}>
       Cargando...
@@ -1304,8 +1486,9 @@ export default function App() {
     return <Login />;
   }
 
-  const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
+  const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)} loadingEsp={espLoading} errorEsp={espError}/>
     :tab==="equipo"?<PanelEquipo esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
+    :tab==="organizaciones"?<PanelOrganizaciones organizadores={organizadores} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)}/>
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
     :<PanelMetricas esps={esps} onVer={verE}/>;
 
@@ -1315,9 +1498,10 @@ export default function App() {
     <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
       <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vista}</div>
-      {selec&&<PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar}/>}
+      {selec&&<PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar} onContacto={agregarContacto} organizadores={organizadores}/>}
     </div>
-    {showN&&<ModalNuevo onGuardar={agregar} onCerrar={()=>setShowN(false)}/>}
+    {showN&&<ModalNuevo onGuardar={agregar} onCerrar={()=>setShowN(false)} organizadores={organizadores}/>}
+    {showOrgN&&<ModalNuevaOrganizacion onGuardar={crearOrganizacion} onCerrar={()=>setShowOrgN(false)}/>}
     {toast&&<div style={{position:"fixed",bottom:22,right:22,background:T.s2,
       border:`1px solid ${T.bd}`,borderRadius:9,padding:"11px 16px",display:"flex",
       alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.45)",
