@@ -8,7 +8,7 @@ import { useOrganizadorCodigos } from "./hooks/useOrganizadorCodigos";
 import { useOrganizadorKpis } from "./hooks/useOrganizadorKpis";
 import { supabase } from "./lib/supabase";
 import { importarPolizasDesdeExcel } from "./lib/importarPolizas";
-import { importarSignosDesdeZip } from "./lib/importarSignos";
+import { importarSignosDesdeArchivos } from "./lib/importarSignos";
 import { calcularIndicePenetracion, calcularOportunidad, calcularFaltantes, ultimoPeriodo } from "./lib/fuerzaComercial";
 import Login from "./components/Login";
 import FichaOrganizador from "./components/FichaOrganizador";
@@ -666,7 +666,7 @@ function PanelOrganizaciones({organizadoresConDatos,loading,error,onNuevo,onImpo
         <BtnS onClick={onImportar} style={importando?{opacity:.6,pointerEvents:"none"}:{}}>
           {importando?"Importando...":"⇪ Importar pólizas (Excel)"}</BtnS>
         <BtnS onClick={onImportarSignos} style={importandoSignos?{opacity:.6,pointerEvents:"none"}:{}}>
-          {importandoSignos?"Importando...":"⇪ Importar Signos (ZIP)"}</BtnS>
+          {importandoSignos?"Importando...":"⇪ Importar Signos (ZIP o PDF)"}</BtnS>
         <BtnP onClick={onNuevo}>＋ Nueva organización</BtnP>
       </div>
     </div>
@@ -1600,15 +1600,15 @@ export default function App() {
   }
 
   async function manejarArchivoSignos(ev) {
-    const file = ev.target.files?.[0];
-    ev.target.value = ""; // permite reimportar el mismo archivo si hace falta
-    if (!file) return;
+    const files = ev.target.files;
+    ev.target.value = ""; // permite reimportar los mismos archivos si hace falta
+    if (!files || files.length === 0) return;
 
     setImportandoSignos(true);
     try {
-      const resumen = await importarSignosDesdeZip(file, { supabase, profileId: user.id });
+      const resumen = await importarSignosDesdeArchivos(files, { supabase, profileId: user.id });
       if (resumen.totalPdfs === 0) {
-        alert("El ZIP no tiene ningún PDF.");
+        alert("No se encontró ningún PDF en lo que subiste.");
         return;
       }
       const orgMsg = resumen.organizadoresCreados.length
@@ -1665,7 +1665,7 @@ export default function App() {
     {showN&&<ModalNuevo onGuardar={agregar} onCerrar={()=>setShowN(false)} organizadores={organizadores}/>}
     {showOrgN&&<ModalNuevaOrganizacion onGuardar={crearOrganizacion} onCerrar={()=>setShowOrgN(false)}/>}
     <input ref={fileImportRef} type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={manejarArchivoPolizas}/>
-    <input ref={fileSignosRef} type="file" accept=".zip" style={{display:"none"}} onChange={manejarArchivoSignos}/>
+    <input ref={fileSignosRef} type="file" accept=".zip,.pdf" multiple style={{display:"none"}} onChange={manejarArchivoSignos}/>
     {toast&&<div style={{position:"fixed",bottom:22,right:22,background:T.s2,
       border:`1px solid ${T.bd}`,borderRadius:9,padding:"11px 16px",display:"flex",
       alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.45)",

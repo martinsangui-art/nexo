@@ -104,6 +104,11 @@ function parsearTextoSignos(text, fuenteArchivo) {
   return { codigo, nombre, codigoOrganizador, periodo, tipo_reporte, fuente_archivo: fuenteArchivo, rows };
 }
 
+async function parsearPdf(arrayBuffer, fuenteArchivo) {
+  const texto = await extraerTexto(arrayBuffer);
+  return parsearTextoSignos(texto, fuenteArchivo);
+}
+
 // Recibe el ArrayBuffer de un .zip con uno o más PDFs "Signos" y devuelve un
 // reporte parseado por PDF. Los PDFs que fallan el parseo (layout inesperado)
 // no rompen el lote entero: se devuelven aparte en `errores` para mostrarlos
@@ -120,10 +125,40 @@ export async function parseSignosZip(arrayBuffer) {
   for (const archivo of archivosPdf) {
     try {
       const buffer = await archivo.async("arraybuffer");
-      const texto = await extraerTexto(buffer);
-      reportes.push(parsearTextoSignos(texto, archivo.name));
+      reportes.push(await parsearPdf(buffer, archivo.name));
     } catch (e) {
       errores.push({ archivo: archivo.name, mensaje: e.message });
+    }
+  }
+
+  return { reportes, errores };
+}
+
+// Punto de entrada del importador: recibe la FileList/array de un input
+// type=file (multiple) con cualquier mezcla de .zip y .pdf sueltos — Signos
+// a veces manda el lote completo en un .zip, a veces un .pdf individual por
+// mail. Un .zip se desarma como en parseSignosZip; un .pdf se parsea directo.
+// Cualquier otro tipo de archivo se reporta como error sin romper el lote.
+export async function parseSignosArchivos(files) {
+  const reportes = [];
+  const errores = [];
+
+  for (const file of Array.from(files)) {
+    const nombre = file.name;
+    const ext = nombre.toLowerCase().split(".").pop();
+    try {
+      const buffer = await file.arrayBuffer();
+      if (ext === "zip") {
+        const { reportes: repZip, errores: errZip } = await parseSignosZip(buffer);
+        reportes.push(...repZip);
+        errores.push(...errZip);
+      } else if (ext === "pdf") {
+        reportes.push(await parsearPdf(buffer, nombre));
+      } else {
+        errores.push({ archivo: nombre, mensaje: `Tipo de archivo no soportado (.${ext}) — subí un .zip o .pdf.` });
+      }
+    } catch (e) {
+      errores.push({ archivo: nombre, mensaje: e.message });
     }
   }
 

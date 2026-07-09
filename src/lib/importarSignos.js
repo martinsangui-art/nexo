@@ -1,4 +1,4 @@
-import { parseSignosZip } from "./parseSignosZip";
+import { parseSignosArchivos } from "./parseSignosZip";
 
 // Resuelve organizador_id para un código Signos: primero busca en
 // organizador_codigos (fuente de verdad, resuelve casos como BAROFFIO con dos
@@ -77,16 +77,17 @@ async function guardarHistorialKpis(supabase, importacionId, filasKpi) {
   };
 }
 
-// Punto de entrada del importador: recibe un File (.zip con PDFs Signos) y hace
-// todo el flujo — parsear cada PDF, resolver/crear organizadores, snapshotear
-// el estado anterior, y upsert a organizador_kpis_generales. Solo los reportes
-// tipo "organizador" generan filas de KPIs (ver nota en la migración); los
+// Punto de entrada del importador: recibe una FileList/array de archivos
+// (.zip y/o .pdf sueltos, indistinto — Signos a veces manda el lote completo
+// en un .zip, a veces un .pdf individual por mail) y hace todo el flujo —
+// parsear cada PDF, resolver/crear organizadores, snapshotear el estado
+// anterior, y upsert a organizador_kpis_generales. Solo los reportes tipo
+// "organizador" generan filas de KPIs (ver nota en la migración); los
 // reportes tipo "productor" solo sirven para resolver/crear el organizador
 // dueño si hiciera falta y para la reconciliación de cobertura (que se
 // calcula aparte, con calcularFaltantes).
-export async function importarSignosDesdeZip(file, { supabase, profileId }) {
-  const buffer = await file.arrayBuffer();
-  const { reportes, errores: erroresParseo } = await parseSignosZip(buffer);
+export async function importarSignosDesdeArchivos(files, { supabase, profileId }) {
+  const { reportes, errores: erroresParseo } = await parseSignosArchivos(files);
 
   if (!reportes.length) {
     return { totalPdfs: 0, kpisImportados: 0, organizadoresCreados: [], codigosCubiertos: [], erroresParseo };
@@ -151,9 +152,10 @@ export async function importarSignosDesdeZip(file, { supabase, profileId }) {
     }
   }
 
+  const nombresArchivos = Array.from(files).map(f => f.name).join(", ");
   const { data: importacion, error: errImportacion } = await supabase
     .from("importaciones")
-    .insert([{ profile_id: profileId, tipo: "signos", archivo: file.name }])
+    .insert([{ profile_id: profileId, tipo: "signos", archivo: nombresArchivos }])
     .select()
     .single();
   if (errImportacion) throw new Error(`No se pudo registrar la importación: ${errImportacion.message}`);
