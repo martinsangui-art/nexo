@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { T, fmt$, fmtN, Card, Sec, BtnS } from "../lib/ui.jsx";
 import { calcularIndicePenetracion, calcularOportunidad, clasificarIndice } from "../lib/fuerzaComercial";
 
@@ -11,6 +12,33 @@ function BadgeIndice({ indice, indiceBenchmark }) {
     <span style={{width:6,height:6,borderRadius:"50%",background:c,boxShadow:`0 0 5px ${c}`}}/>
     {indice != null ? `Índice ${indice}` : "Sin índice"} · {BADGE_LABEL[nivel]}
   </span>;
+}
+
+// El índice no es una métrica de Federación Patronal — es un cálculo interno
+// de NEXO (ver fuerzaComercial.js), así que sin esta explicación a la vista
+// nadie sabe de dónde sale ni por qué un organizador está "en rojo". Antes
+// solo se entendía preguntando; ahora queda documentado en la propia ficha.
+function InfoIndice({ indiceBenchmark }) {
+  const [abierto, setAbierto] = useState(false);
+  return <div style={{marginTop:8}}>
+    <button onClick={() => setAbierto(a => !a)} style={{background:"transparent",border:"none",
+      color:T.t3,fontSize:11,cursor:"pointer",fontFamily:"inherit",padding:0,textDecoration:"underline",
+      textUnderlineOffset:2}}>
+      {abierto ? "ocultar" : "ⓘ ¿qué es el índice?"}
+    </button>
+    {abierto && <div style={{marginTop:6,fontSize:11,color:T.t2,lineHeight:1.6,background:T.s3,
+      borderRadius:7,padding:10,border:`1px solid ${T.bd}`}}>
+      No es un dato de Federación Patronal — lo calcula NEXO: <b style={{color:T.t1}}>(prima de tus pólizas
+      de retiro con este organizador ÷ prima de su cartera Seguros Generales+ART en Signos) × 10.000</b>.
+      Mide cuánto convertís esa cartera en venta de retiro. Se compara contra el organizador con mejor
+      índice del período{indiceBenchmark ? ` (benchmark actual: ${indiceBenchmark})` : ""}:
+      <div style={{marginTop:6}}>
+        <div><span style={{color:T.verde,fontWeight:800}}>● Convertido</span> — 90% o más del benchmark.</div>
+        <div><span style={{color:T.ambar,fontWeight:800}}>● Por debajo</span> — entre 5% y 90%.</div>
+        <div><span style={{color:T.rojo,fontWeight:800}}>● Cartera fuerte, retiro casi nulo</span> — menos del 5%, la mejor oportunidad.</div>
+      </div>
+    </div>}
+  </div>;
 }
 
 // Compara la cartera SG+ART del período más reciente contra la de ~12 meses
@@ -62,6 +90,7 @@ export default function FichaOrganizador({ organizador, codigos, kpisOrg, poliza
           height:26,borderRadius:"50%",cursor:"pointer",fontSize:13,flexShrink:0}}>✕</button>
       </div>
       <BadgeIndice indice={indice} indiceBenchmark={indiceBenchmark} />
+      <InfoIndice indiceBenchmark={indiceBenchmark} />
       {enFaltantes && <div style={{marginTop:8,fontSize:11,fontWeight:700,color:T.ambar,background:T.ambarS,
         borderRadius:6,padding:"6px 10px",border:`1px solid ${T.ambar}33`}}>
         ⚠️ Sin reporte Signos este período — datos de fuerza comercial desactualizados

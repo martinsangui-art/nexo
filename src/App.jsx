@@ -390,9 +390,10 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
         {l:"En ritmo",v:enR,sub:`de ${esps.length} esp.`,c:T.verde,p:null},
         {l:"Atrasados",v:atr,sub:"requieren acción",c:T.rojo,p:null},
         {l:"Rescates",v:res,sub:"última semana",c:res>0?T.rojo:T.t3,p:null},
-        {l:"Oportunidad sin explotar",v:fmt$(oportunidadTotal||0),sub:"fuerza comercial",c:oportunidadTotal>0?T.verde:T.t3,p:null},
-      ].map(k=><Card key={k.l} style={{padding:"16px 18px",position:"relative",overflow:"hidden",
-          borderTop:"2px solid "+T.azul}}>
+        {l:"Oportunidad sin explotar",v:fmt$(oportunidadTotal||0),sub:"fuerza comercial",c:oportunidadTotal>0?T.verde:T.t3,p:null,
+          title:"Suma de lo que cada organizador podría generar en prima de retiro si convirtiera su cartera SG+ART al ritmo del mejor organizador del período (índice propio de NEXO, no de FP — ver detalle en su ficha)."},
+      ].map(k=><Card key={k.l} title={k.title} style={{padding:"16px 18px",position:"relative",overflow:"hidden",
+          borderTop:"2px solid "+T.azul,cursor:k.title?"help":"default"}}>
         <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{k.l}</div>
         <div style={{fontSize:26,fontWeight:900,color:k.c,letterSpacing:"-1px",lineHeight:1}}>{k.v}</div>
         {k.p!==null&&<div style={{marginTop:7}}>
@@ -705,7 +706,7 @@ function PanelOrganizaciones({organizadoresConDatos,loading,error,onNuevo,onImpo
             </div>
             {o.primaSgArt!=null && <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${T.bd}`,
               display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:10,color:T.t3}}>Índice {o.indice ?? "—"}</span>
+              <span title="Índice propio de NEXO: prima de retiro ÷ prima SG+ART (Signos) x 10.000. No es un dato de Federación Patronal — ver detalle en la ficha del organizador." style={{fontSize:10,color:T.t3,cursor:"help",borderBottom:`1px dotted ${T.t3}`}}>Índice {o.indice ?? "—"}</span>
               {o.oportunidad>0 && <span style={{fontSize:12,fontWeight:800,color:T.verde}}>{fmt$(o.oportunidad)} oport.</span>}
             </div>}
           </Card>)}
