@@ -1418,7 +1418,7 @@ export default function App() {
   const { organizadorCodigos, refetch: refetchOrganizadorCodigos } = useOrganizadorCodigos();
   const { organizadorKpis, refetch: refetchOrganizadorKpis } = useOrganizadorKpis();
   const { objetivos: udnObjetivos, avanceMensual: udnAvanceMensual, loading: udnLoading, error: udnError,
-    crearObjetivoAnual, guardarAvanceMensual } = useUdnObjetivos();
+    crearObjetivoAnual, editarObjetivoAnual, guardarAvanceMensual } = useUdnObjetivos();
   const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
@@ -1590,6 +1590,16 @@ export default function App() {
     showToast("✅", `Objetivo ${datos.anio} de ${datos.nombre_udn} guardado`);
   }
 
+  async function editarObjetivoUdn(id, datos) {
+    const { error } = await editarObjetivoAnual(id, datos);
+    if (error) {
+      console.error('Error al editar el objetivo de UDN:', error);
+      alert('No se pudo guardar: ' + error.message);
+      return;
+    }
+    showToast("✅", `Objetivo ${datos.anio} actualizado`);
+  }
+
   async function guardarAvanceUdn(udnObjetivoId, periodo, datos) {
     const { error } = await guardarAvanceMensual(udnObjetivoId, periodo, datos);
     if (error) {
@@ -1672,7 +1682,7 @@ export default function App() {
   const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)} loadingEsp={espLoading} errorEsp={espError} oportunidadTotal={oportunidadTotal}/>
     :tab==="equipo"?<PanelEquipo esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
     :tab==="organizaciones"?<PanelOrganizaciones organizadoresConDatos={organizadoresConDatos} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)} onImportar={()=>fileImportRef.current?.click()} importando={importando} onImportarSignos={()=>fileSignosRef.current?.click()} importandoSignos={importandoSignos} faltantes={faltantes} onVer={verOrg}/>
-    :tab==="objetivos"?<PanelObjetivosUDN objetivos={udnObjetivos} avanceMensual={udnAvanceMensual} loading={udnLoading} error={udnError} onCrearObjetivo={crearObjetivoUdn} onGuardarAvance={guardarAvanceUdn}/>
+    :tab==="objetivos"?<PanelObjetivosUDN objetivos={udnObjetivos} avanceMensual={udnAvanceMensual} loading={udnLoading} error={udnError} onCrearObjetivo={crearObjetivoUdn} onEditarObjetivo={editarObjetivoUdn} onGuardarAvance={guardarAvanceUdn}/>
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
     :<PanelMetricas esps={esps} onVer={verE}/>;
 

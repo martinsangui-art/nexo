@@ -94,10 +94,14 @@ const puntosReal = (historial, campo, extra=0) =>
     return { x: mes, y: h && h[campo] != null ? h[campo] + extra : null };
   });
 
-function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
+function FormObjetivoAnual({ anioSugerido, valoresIniciales, onGuardar, onCancelar }) {
   const [f, setF] = useState({
-    anio: anioSugerido, nombre_udn: "", polizas_base_diciembre: "",
-    objetivo_polizas_diciembre: "", objetivo_premio_promedio_min: "", objetivo_tasa_rescate_max: "",
+    anio: valoresIniciales?.anio ?? anioSugerido,
+    nombre_udn: valoresIniciales?.nombre_udn ?? "",
+    polizas_base_diciembre: valoresIniciales?.polizas_base_diciembre ?? "",
+    objetivo_polizas_diciembre: valoresIniciales?.objetivo_polizas_diciembre ?? "",
+    objetivo_premio_promedio_min: valoresIniciales?.objetivo_premio_promedio_min ?? "",
+    objetivo_tasa_rescate_max: valoresIniciales?.objetivo_tasa_rescate_max ?? "",
   });
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const base = Number(f.polizas_base_diciembre) || 0;
@@ -105,8 +109,10 @@ function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
   const incremental = objetivoTotal - base;
   const pctDerivado = base > 0 && incremental > 0 ? ((incremental / base) * 100).toFixed(2) : null;
 
-  return <Card style={{padding:20,maxWidth:480}}>
-    <div style={{fontSize:16,fontWeight:900,color:T.t1,marginBottom:4}}>Objetivo anual de tu UDN</div>
+  return <Card style={{padding:20,maxWidth:480,maxHeight:"90vh",overflowY:"auto"}}>
+    <div style={{fontSize:16,fontWeight:900,color:T.t1,marginBottom:4}}>
+      {valoresIniciales ? "Editar objetivo anual" : "Objetivo anual de tu UDN"}
+    </div>
     <div style={{fontSize:12,color:T.t3,marginBottom:16}}>
       Los objetivos que te impone Gerencia Comercial, fijos para todo el año. Se cargan una vez (y se pueden
       editar después si Gerencia Comercial los revisa).
@@ -142,7 +148,7 @@ function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
           objetivo_premio_promedio_min: f.objetivo_premio_promedio_min ? Number(f.objetivo_premio_promedio_min) : null,
           objetivo_tasa_rescate_max: f.objetivo_tasa_rescate_max ? Number(f.objetivo_tasa_rescate_max) : null,
         });
-      }}>Guardar objetivo</BtnP>
+      }}>{valoresIniciales ? "Guardar cambios" : "Guardar objetivo"}</BtnP>
     </div>
   </Card>;
 }
@@ -212,8 +218,9 @@ function FormAvanceMensual({ periodoSugerido, avanceExistente, onGuardar, onCanc
   </div>;
 }
 
-export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, error, onCrearObjetivo, onGuardarAvance }) {
+export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, error, onCrearObjetivo, onEditarObjetivo, onGuardarAvance }) {
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [mostrarEdicion, setMostrarEdicion] = useState(false);
   const anioActual = new Date().getFullYear();
   const mesActual = new Date().getMonth() + 1;
   const periodoActualISO = `${anioActual}-${String(mesActual).padStart(2,"0")}-01`;
@@ -252,9 +259,12 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
       <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
         Mis Objetivos <span style={{fontSize:14,fontWeight:400,color:T.t3}}>· {objetivo.nombre_udn} {objetivo.anio}</span>
       </div>
-      <BtnP onClick={()=>setMostrarForm(true)}>
-        {avanceDeEsteMes ? "✏️ Editar avance del mes" : "＋ Cargar avance del mes"}
-      </BtnP>
+      <div style={{display:"flex",gap:8}}>
+        <BtnS onClick={()=>setMostrarEdicion(true)}>✏️ Editar objetivo</BtnS>
+        <BtnP onClick={()=>setMostrarForm(true)}>
+          {avanceDeEsteMes ? "✏️ Editar avance del mes" : "＋ Cargar avance del mes"}
+        </BtnP>
+      </div>
     </div>
     <div style={{fontSize:11,color:T.t3,marginBottom:18}}>
       Objetivo: llegar a {fmtN(objetivo.objetivo_polizas_diciembre)} pólizas a diciembre {objetivo.anio}
@@ -343,5 +353,12 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
     {mostrarForm && <FormAvanceMensual periodoSugerido={periodoActualISO} avanceExistente={avanceDeEsteMes}
       onGuardar={async (datos)=>{ await onGuardarAvance(objetivo.id, datos.periodo, datos); setMostrarForm(false); }}
       onCancelar={()=>setMostrarForm(false)}/>}
+
+    {mostrarEdicion && <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",display:"flex",
+      alignItems:"center",justifyContent:"center",zIndex:300,backdropFilter:"blur(4px)"}}>
+      <FormObjetivoAnual anioSugerido={objetivo.anio} valoresIniciales={objetivo}
+        onGuardar={async (datos)=>{ await onEditarObjetivo(objetivo.id, datos); setMostrarEdicion(false); }}
+        onCancelar={()=>setMostrarEdicion(false)}/>
+    </div>}
   </div>;
 }
