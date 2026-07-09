@@ -61,10 +61,50 @@ async function resolverOrganizadores(supabase, profileId, filas) {
   return { mapa, creados };
 }
 
+// Antes de pisar una póliza existente con el upsert, guarda su valor actual
+// en polizas_historial. Es la red de seguridad para reconstruir a mano si
+// el Excel viene corrupto: no revierte nada automáticamente, pero el dato
+// de "cómo estaba antes" queda guardado y no se pierde con el import.
+// Filas realmente nuevas no tienen nada que snapshotear (deshacerlas es
+// borrar la fila de `polizas`), pero igual quedan registradas como 'nueva'
+// para saber qué trajo cada importación.
+async function guardarHistorialPolizas(supabase, importacionId, profileId, filasListas) {
+  const numeros = filasListas.map(f => f.numero_poliza);
+  const existentesPorNumero = new Map();
+
+  for (const lote of enLotes(numeros, TAMANO_LOTE)) {
+    const { data, error } = await supabase
+      .from("polizas")
+      .select("*")
+      .eq("profile_id", profileId)
+      .in("numero_poliza", lote);
+    if (error) throw new Error(`No se pudo leer el estado anterior de las pólizas (para el historial): ${error.message}`);
+    for (const row of data) existentesPorNumero.set(row.numero_poliza, row);
+  }
+
+  const filasHistorial = filasListas.map(f => {
+    const anterior = existentesPorNumero.get(f.numero_poliza);
+    return anterior
+      ? { importacion_id: importacionId, numero_poliza: f.numero_poliza, profile_id: profileId, tipo_cambio: "actualizada", snapshot: anterior }
+      : { importacion_id: importacionId, numero_poliza: f.numero_poliza, profile_id: profileId, tipo_cambio: "nueva", snapshot: null };
+  });
+
+  for (const lote of enLotes(filasHistorial, TAMANO_LOTE)) {
+    const { error } = await supabase.from("polizas_historial").insert(lote);
+    if (error) throw new Error(`No se pudo guardar el historial de pólizas: ${error.message}`);
+  }
+
+  return {
+    nuevas: filasHistorial.filter(f => f.tipo_cambio === "nueva").length,
+    actualizadas: filasHistorial.filter(f => f.tipo_cambio === "actualizada").length,
+  };
+}
+
 // Punto de entrada del importador: recibe un File (input type=file) y hace
-// todo el flujo — parsear, resolver/crear organizadores, y upsert a polizas.
-// onConflict numero_poliza+profile_id: reimportar el mismo período (o uno
-// con overlap) actualiza las filas existentes en vez de romper por duplicado.
+// todo el flujo — parsear, resolver/crear organizadores, snapshotear el
+// estado anterior, y upsert a polizas. onConflict numero_poliza+profile_id:
+// reimportar el mismo período (o uno con overlap) actualiza las filas
+// existentes en vez de romper por duplicado.
 export async function importarPolizasDesdeExcel(file, { supabase, profileId }) {
   const buffer = await file.arrayBuffer();
   const filas = await parseExcelPolizas(buffer);
@@ -81,6 +121,15 @@ export async function importarPolizasDesdeExcel(file, { supabase, profileId }) {
     organizador_id: fila.codigo_org_origen != null ? (mapa.get(fila.codigo_org_origen) ?? null) : null,
   }));
 
+  const { data: importacion, error: errImportacion } = await supabase
+    .from("importaciones")
+    .insert([{ profile_id: profileId, tipo: "polizas", archivo: file.name }])
+    .select()
+    .single();
+  if (errImportacion) throw new Error(`No se pudo registrar la importación: ${errImportacion.message}`);
+
+  const { nuevas, actualizadas } = await guardarHistorialPolizas(supabase, importacion.id, profileId, filasListas);
+
   let insertadas = 0;
   for (const lote of enLotes(filasListas, TAMANO_LOTE)) {
     const { error } = await supabase
@@ -90,5 +139,12 @@ export async function importarPolizasDesdeExcel(file, { supabase, profileId }) {
     insertadas += lote.length;
   }
 
-  return { total: filas.length, insertadas, organizadoresCreados: creados };
+  // No fatal: el import ya se aplicó, esto es solo metadata de auditoría.
+  const { error: errResumen } = await supabase
+    .from("importaciones")
+    .update({ resumen: { total: filas.length, insertadas, nuevas, actualizadas, organizadoresCreados: creados.length } })
+    .eq("id", importacion.id);
+  if (errResumen) console.warn("No se pudo actualizar el resumen de la importación:", errResumen.message);
+
+  return { total: filas.length, insertadas, organizadoresCreados: creados, importacionId: importacion.id };
 }

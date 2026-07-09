@@ -40,12 +40,50 @@ async function resolverOrganizador(supabase, profileId, codigo, nombre, mapaCodi
   return { organizadorId: org.id, creado: true };
 }
 
+// Antes de pisar un KPI existente con el upsert, guarda su valor actual en
+// kpis_historial — mismo criterio que polizas_historial (ver esa función y
+// la migración): prioridad menor acá porque este dato cambia poco y no
+// alimenta la evaluación del especialista, pero el costo es el mismo así
+// que se guarda igual.
+async function guardarHistorialKpis(supabase, importacionId, filasKpi) {
+  if (!filasKpi.length) return { nuevas: 0, actualizadas: 0 };
+
+  const organizadorIds = [...new Set(filasKpi.map(f => f.organizador_id))];
+  const periodos = [...new Set(filasKpi.map(f => f.periodo))];
+
+  const { data: existentes, error } = await supabase
+    .from("organizador_kpis_generales")
+    .select("*")
+    .in("organizador_id", organizadorIds)
+    .in("periodo", periodos);
+  if (error) throw new Error(`No se pudo leer el estado anterior de los KPIs (para el historial): ${error.message}`);
+
+  const clave = (organizadorId, periodo, ramo) => `${organizadorId}|${periodo}|${ramo}`;
+  const existentesPorClave = new Map(existentes.map(row => [clave(row.organizador_id, row.periodo, row.ramo), row]));
+
+  const filasHistorial = filasKpi.map(f => {
+    const anterior = existentesPorClave.get(clave(f.organizador_id, f.periodo, f.ramo));
+    return anterior
+      ? { importacion_id: importacionId, organizador_id: f.organizador_id, periodo: f.periodo, ramo: f.ramo, tipo_cambio: "actualizada", snapshot: anterior }
+      : { importacion_id: importacionId, organizador_id: f.organizador_id, periodo: f.periodo, ramo: f.ramo, tipo_cambio: "nueva", snapshot: null };
+  });
+
+  const { error: errInsert } = await supabase.from("kpis_historial").insert(filasHistorial);
+  if (errInsert) throw new Error(`No se pudo guardar el historial de KPIs: ${errInsert.message}`);
+
+  return {
+    nuevas: filasHistorial.filter(f => f.tipo_cambio === "nueva").length,
+    actualizadas: filasHistorial.filter(f => f.tipo_cambio === "actualizada").length,
+  };
+}
+
 // Punto de entrada del importador: recibe un File (.zip con PDFs Signos) y hace
-// todo el flujo — parsear cada PDF, resolver/crear organizadores, y upsert a
-// organizador_kpis_generales. Solo los reportes tipo "organizador" generan filas
-// de KPIs (ver nota en la migración); los reportes tipo "productor" solo sirven
-// para resolver/crear el organizador dueño si hiciera falta y para la
-// reconciliación de cobertura (que se calcula aparte, con calcularFaltantes).
+// todo el flujo — parsear cada PDF, resolver/crear organizadores, snapshotear
+// el estado anterior, y upsert a organizador_kpis_generales. Solo los reportes
+// tipo "organizador" generan filas de KPIs (ver nota en la migración); los
+// reportes tipo "productor" solo sirven para resolver/crear el organizador
+// dueño si hiciera falta y para la reconciliación de cobertura (que se
+// calcula aparte, con calcularFaltantes).
 export async function importarSignosDesdeZip(file, { supabase, profileId }) {
   const buffer = await file.arrayBuffer();
   const { reportes, errores: erroresParseo } = await parseSignosZip(buffer);
@@ -113,6 +151,15 @@ export async function importarSignosDesdeZip(file, { supabase, profileId }) {
     }
   }
 
+  const { data: importacion, error: errImportacion } = await supabase
+    .from("importaciones")
+    .insert([{ profile_id: profileId, tipo: "signos", archivo: file.name }])
+    .select()
+    .single();
+  if (errImportacion) throw new Error(`No se pudo registrar la importación: ${errImportacion.message}`);
+
+  const { nuevas, actualizadas } = await guardarHistorialKpis(supabase, importacion.id, filasKpi);
+
   let kpisImportados = 0;
   if (filasKpi.length) {
     const { error } = await supabase
@@ -122,6 +169,13 @@ export async function importarSignosDesdeZip(file, { supabase, profileId }) {
     kpisImportados = filasKpi.length;
   }
 
+  // No fatal: el import ya se aplicó, esto es solo metadata de auditoría.
+  const { error: errResumen } = await supabase
+    .from("importaciones")
+    .update({ resumen: { totalPdfs: reportes.length + erroresParseo.length, kpisImportados, nuevas, actualizadas, organizadoresCreados: organizadoresCreados.length } })
+    .eq("id", importacion.id);
+  if (errResumen) console.warn("No se pudo actualizar el resumen de la importación:", errResumen.message);
+
   return {
     totalPdfs: reportes.length + erroresParseo.length,
     kpisImportados,
@@ -129,5 +183,6 @@ export async function importarSignosDesdeZip(file, { supabase, profileId }) {
     codigosCubiertos,
     erroresParseo,
     avisos,
+    importacionId: importacion.id,
   };
 }
