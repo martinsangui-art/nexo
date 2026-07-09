@@ -97,12 +97,13 @@ const puntosReal = (historial, campo, extra=0) =>
 function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
   const [f, setF] = useState({
     anio: anioSugerido, nombre_udn: "", polizas_base_diciembre: "",
-    objetivo_crecimiento_polizas: "", objetivo_premio_promedio_min: "", objetivo_tasa_rescate_max: "",
+    objetivo_polizas_diciembre: "", objetivo_premio_promedio_min: "", objetivo_tasa_rescate_max: "",
   });
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const base = Number(f.polizas_base_diciembre) || 0;
-  const objetivo = Number(f.objetivo_crecimiento_polizas) || 0;
-  const pctDerivado = base > 0 && objetivo > 0 ? ((objetivo / base) * 100).toFixed(2) : null;
+  const objetivoTotal = Number(f.objetivo_polizas_diciembre) || 0;
+  const incremental = objetivoTotal - base;
+  const pctDerivado = base > 0 && incremental > 0 ? ((incremental / base) * 100).toFixed(2) : null;
 
   return <Card style={{padding:20,maxWidth:480}}>
     <div style={{fontSize:16,fontWeight:900,color:T.t1,marginBottom:4}}>Objetivo anual de tu UDN</div>
@@ -119,10 +120,10 @@ function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
       <Inp type="number" value={f.polizas_base_diciembre} onChange={v=>set("polizas_base_diciembre",v)}/>
     </div>
     <div style={{marginBottom:10}}>
-      <Label t="Objetivo de crecimiento anual (cantidad de pólizas nuevas)"/>
-      <Inp type="number" value={f.objetivo_crecimiento_polizas} onChange={v=>set("objetivo_crecimiento_polizas",v)} placeholder="ej. 655"/>
+      <Label t="Objetivo total de pólizas a diciembre"/>
+      <Inp type="number" value={f.objetivo_polizas_diciembre} onChange={v=>set("objetivo_polizas_diciembre",v)} placeholder="ej. 1102"/>
       {pctDerivado && <div style={{fontSize:10,color:T.t3,marginTop:4}}>
-        Equivale a {pctDerivado}% de crecimiento · total a diciembre: {fmtN(base + objetivo)} pólizas
+        Equivale a sumar {fmtN(incremental)} pólizas nuevas ({pctDerivado}% de crecimiento sobre la base)
       </div>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
@@ -132,12 +133,12 @@ function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
     <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
       {onCancelar && <BtnS onClick={onCancelar}>Cancelar</BtnS>}
       <BtnP onClick={()=>{
-        if(!f.nombre_udn.trim()||!f.anio||!f.polizas_base_diciembre||!f.objetivo_crecimiento_polizas) return;
+        if(!f.nombre_udn.trim()||!f.anio||!f.polizas_base_diciembre||!f.objetivo_polizas_diciembre) return;
         onGuardar({
           anio: Number(f.anio),
           nombre_udn: f.nombre_udn.trim(),
           polizas_base_diciembre: Number(f.polizas_base_diciembre),
-          objetivo_crecimiento_polizas: Number(f.objetivo_crecimiento_polizas),
+          objetivo_polizas_diciembre: Number(f.objetivo_polizas_diciembre),
           objetivo_premio_promedio_min: f.objetivo_premio_promedio_min ? Number(f.objetivo_premio_promedio_min) : null,
           objetivo_tasa_rescate_max: f.objetivo_tasa_rescate_max ? Number(f.objetivo_tasa_rescate_max) : null,
         });
@@ -238,7 +239,11 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
   const ultimo = historial[0] ?? null;
   const avanceDeEsteMes = historial.find(a => a.periodo === periodoActualISO) ?? null;
 
-  const semCrecimiento = ultimo ? clasificarCrecimiento(ultimo.crecimiento_ac_polizas, objetivo.objetivo_crecimiento_polizas, mesDePeriodo(ultimo.periodo)) : { nivel:"sin_datos", color:"t3" };
+  // objetivo_polizas_diciembre es el TOTAL a fin de año (ej. 1102), no un
+  // incremento sobre la base — el incremental (para pacing/semáforo, que
+  // se compara contra crecimiento_ac_polizas) se deriva acá.
+  const incrementalObjetivo = objetivo.objetivo_polizas_diciembre - objetivo.polizas_base_diciembre;
+  const semCrecimiento = ultimo ? clasificarCrecimiento(ultimo.crecimiento_ac_polizas, incrementalObjetivo, mesDePeriodo(ultimo.periodo)) : { nivel:"sin_datos", color:"t3" };
   const semPremio = ultimo ? clasificarPremio(ultimo.premio_promedio_acumulado, objetivo.objetivo_premio_promedio_min) : { nivel:"sin_datos", color:"t3" };
   const semRescate = ultimo ? clasificarRescate(ultimo.tasa_rescate_acumulada, objetivo.objetivo_tasa_rescate_max) : { nivel:"sin_datos", color:"t3" };
 
@@ -252,8 +257,8 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
       </BtnP>
     </div>
     <div style={{fontSize:11,color:T.t3,marginBottom:18}}>
-      Objetivo: sumar {fmtN(objetivo.objetivo_crecimiento_polizas)} pólizas nuevas sobre {fmtN(objetivo.polizas_base_diciembre)}
-      (base dic. {objetivo.anio - 1}) → {fmtN(objetivo.polizas_base_diciembre + objetivo.objetivo_crecimiento_polizas)} a diciembre {objetivo.anio}
+      Objetivo: llegar a {fmtN(objetivo.objetivo_polizas_diciembre)} pólizas a diciembre {objetivo.anio}
+      (+{fmtN(incrementalObjetivo)} sobre la base de {fmtN(objetivo.polizas_base_diciembre)} en dic. {objetivo.anio - 1})
       {objetivo.objetivo_premio_promedio_min ? ` · premio promedio ≥ ${fmt$(objetivo.objetivo_premio_promedio_min)}` : ""}
       {objetivo.objetivo_tasa_rescate_max != null ? ` · rescates ≤ ${objetivo.objetivo_tasa_rescate_max}%` : ""}
     </div>
@@ -265,7 +270,7 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
     ) : <>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
         <Semaforo titulo="Crecimiento de pólizas" valor={fmtN(ultimo.crecimiento_ac_polizas)}
-          sub={`${ultimo.crecimiento_acumulado_pct ?? "—"}% acumulado · objetivo ${fmtN(objetivo.objetivo_crecimiento_polizas)}`}
+          sub={`${ultimo.crecimiento_acumulado_pct ?? "—"}% acumulado · objetivo +${fmtN(incrementalObjetivo)} (${fmtN(objetivo.objetivo_polizas_diciembre)} total)`}
           nivel={semCrecimiento.nivel} color={semCrecimiento.color}/>
         <Semaforo titulo="Premio promedio" valor={fmt$(ultimo.premio_promedio_acumulado)}
           sub={objetivo.objetivo_premio_promedio_min ? `piso ${fmt$(objetivo.objetivo_premio_promedio_min)}` : "sin piso definido"}
@@ -282,7 +287,7 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
           </div>
           <GraficoObjetivo formatY={(v)=>fmtN(Math.round(v))} series={[
             { label:"Objetivo", color:T.ambar, dashed:true,
-              puntos: puntosObjetivoLineal(objetivo.objetivo_crecimiento_polizas, objetivo.polizas_base_diciembre) },
+              puntos: puntosObjetivoLineal(incrementalObjetivo, objetivo.polizas_base_diciembre) },
             { label:"Real", color:T.azul, dashed:false,
               puntos: puntosReal(historial, "crecimiento_ac_polizas", objetivo.polizas_base_diciembre) },
           ]}/>
