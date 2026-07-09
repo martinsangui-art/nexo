@@ -1,20 +1,22 @@
 // Cálculos de negocio del objetivo de UDN — funciones puras, sin dependencia
 // de React ni de Supabase.
 
-// Ritmo esperado de crecimiento acumulado a esta altura del año: si el
-// objetivo anual es 146,53% y estamos en el mes 6 de 12, "deberías" ir por
-// 146,53% x 6/12 = 73,26% para llegar a tiempo. Es la misma lógica con la
-// que el reporte de Gerencia Comercial pinta el "Crec. Acumulado" en rojo
-// aunque el número en sí no esté "mal" — está mal PARA ESTE MES.
-export const ritmoEsperadoCrecimiento = (objetivoCrecimientoPct, mesPeriodo) =>
-  (objetivoCrecimientoPct * mesPeriodo) / 12;
+// Ritmo esperado de pólizas nuevas acumuladas a esta altura del año: si el
+// objetivo anual es sumar 655 pólizas y estamos en el mes 6 de 12,
+// "deberías" llevar 655 x 6/12 = 327,5 para llegar a tiempo. Es la misma
+// lógica con la que el reporte de Gerencia Comercial pinta el "Crec.
+// Acumulado" en rojo aunque el número en sí no esté "mal" — está mal PARA
+// ESTE MES. Se usa cantidad de pólizas (no %) porque es lo que se carga
+// mes a mes (crecimiento_ac_polizas) y lo que destaca el propio reporte.
+export const ritmoEsperadoCrecimiento = (objetivoCrecimientoPolizas, mesPeriodo) =>
+  (objetivoCrecimientoPolizas * mesPeriodo) / 12;
 
 // mesPeriodo: 1-12, el mes calendario del `periodo` (date) que se está evaluando.
-export function clasificarCrecimiento(crecimientoAcumuladoPct, objetivoCrecimientoPct, mesPeriodo) {
-  if (crecimientoAcumuladoPct == null || !objetivoCrecimientoPct || !mesPeriodo) return { nivel: "sin_datos", color: "t3" };
-  const esperado = ritmoEsperadoCrecimiento(objetivoCrecimientoPct, mesPeriodo);
+export function clasificarCrecimiento(crecimientoAcPolizas, objetivoCrecimientoPolizas, mesPeriodo) {
+  if (crecimientoAcPolizas == null || !objetivoCrecimientoPolizas || !mesPeriodo) return { nivel: "sin_datos", color: "t3" };
+  const esperado = ritmoEsperadoCrecimiento(objetivoCrecimientoPolizas, mesPeriodo);
   if (esperado <= 0) return { nivel: "sin_datos", color: "t3" };
-  const ratio = crecimientoAcumuladoPct / esperado;
+  const ratio = crecimientoAcPolizas / esperado;
   if (ratio >= 1) return { nivel: "verde", color: "verde" };
   if (ratio >= 0.85) return { nivel: "ambar", color: "ambar" };
   return { nivel: "rojo", color: "rojo" };

@@ -21,12 +21,88 @@ function Semaforo({ titulo, valor, sub, nivel, color }) {
   </Card>;
 }
 
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+// Línea de tiempo simple (12 meses fijos en X) con 1-2 series — mismo
+// espíritu que el gráfico "objetivo vs. real" del PDF de Gerencia
+// Comercial, pero renderizado a mano en SVG (como el resto de los gráficos
+// de NEXO, ej. el Spark de especialistas) para no sumar una librería nueva.
+function GraficoObjetivo({ series, formatY }) {
+  const width = 560, height = 190;
+  const pad = { l: 46, r: 12, t: 12, b: 22 };
+  const w = width - pad.l - pad.r;
+  const h = height - pad.t - pad.b;
+  const todosY = series.flatMap(s => s.puntos.filter(p => p.y != null).map(p => p.y));
+
+  if (todosY.length === 0) {
+    return <div style={{padding:"24px 12px",textAlign:"center",fontSize:12,color:T.t3}}>
+      Cargá al menos un mes para ver el gráfico.
+    </div>;
+  }
+
+  const maxY = Math.max(...todosY) * 1.1 || 1;
+  const minY = 0;
+  const xFor = (mes) => pad.l + ((mes - 1) / 11) * w;
+  const yFor = (val) => pad.t + h - ((val - minY) / (maxY - minY || 1)) * h;
+
+  return <div>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{width:"100%",height:"auto",display:"block"}}>
+      {[0, 0.5, 1].map(f => {
+        const val = minY + (maxY - minY) * f;
+        const y = yFor(val);
+        return <g key={f}>
+          <line x1={pad.l} y1={y} x2={width - pad.r} y2={y} stroke={T.bd} strokeWidth={1}/>
+          <text x={pad.l - 6} y={y + 3} textAnchor="end" fontSize="9" fill={T.t3}>{formatY(val)}</text>
+        </g>;
+      })}
+      {[1,3,5,7,9,11].map(m => <text key={m} x={xFor(m)} y={height - 4} textAnchor="middle" fontSize="9" fill={T.t3}>
+        {MESES[m-1]}
+      </text>)}
+      {series.map(s => {
+        const pts = s.puntos.filter(p => p.y != null);
+        if (pts.length === 0) return null;
+        const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${xFor(p.x)},${yFor(p.y)}`).join(" ");
+        return <g key={s.label}>
+          <path d={d} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dashed ? "5,4" : "none"}/>
+          {!s.dashed && pts.map(p => <circle key={p.x} cx={xFor(p.x)} cy={yFor(p.y)} r={3} fill={s.color}/>)}
+        </g>;
+      })}
+    </svg>
+    <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:4}}>
+      {series.map(s => <span key={s.label} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:T.t3}}>
+        <span style={{width:10,height:s.dashed?0:2,borderTop:`2px ${s.dashed?"dashed":"solid"} ${s.color}`}}/>
+        {s.label}
+      </span>)}
+    </div>
+  </div>;
+}
+
+// Rampa lineal mes a mes desde 0 hasta el objetivo anual — así se ve la
+// misma línea ascendente de "Pólizas objetivo" que en el PDF.
+const puntosObjetivoLineal = (valorAnual, valorBase=0) =>
+  Array.from({length:12}, (_, i) => ({ x: i+1, y: valorBase + (valorAnual * (i+1)) / 12 }));
+
+// Línea plana (piso o techo, igual todos los meses) — el "Objetivo"
+// punteado de premio y rescate en el PDF no cambia mes a mes.
+const puntosObjetivoPlano = (valor) =>
+  valor == null ? [] : Array.from({length:12}, (_, i) => ({ x: i+1, y: valor }));
+
+const puntosReal = (historial, campo, extra=0) =>
+  Array.from({length:12}, (_, i) => {
+    const mes = i + 1;
+    const h = historial.find(x => mesDePeriodo(x.periodo) === mes);
+    return { x: mes, y: h && h[campo] != null ? h[campo] + extra : null };
+  });
+
 function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
   const [f, setF] = useState({
     anio: anioSugerido, nombre_udn: "", polizas_base_diciembre: "",
-    objetivo_crecimiento_pct: "", objetivo_premio_promedio_min: "", objetivo_tasa_rescate_max: "",
+    objetivo_crecimiento_polizas: "", objetivo_premio_promedio_min: "", objetivo_tasa_rescate_max: "",
   });
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
+  const base = Number(f.polizas_base_diciembre) || 0;
+  const objetivo = Number(f.objetivo_crecimiento_polizas) || 0;
+  const pctDerivado = base > 0 && objetivo > 0 ? ((objetivo / base) * 100).toFixed(2) : null;
 
   return <Card style={{padding:20,maxWidth:480}}>
     <div style={{fontSize:16,fontWeight:900,color:T.t1,marginBottom:4}}>Objetivo anual de tu UDN</div>
@@ -43,8 +119,11 @@ function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
       <Inp type="number" value={f.polizas_base_diciembre} onChange={v=>set("polizas_base_diciembre",v)}/>
     </div>
     <div style={{marginBottom:10}}>
-      <Label t="Objetivo de crecimiento anual (%)"/>
-      <Inp type="number" value={f.objetivo_crecimiento_pct} onChange={v=>set("objetivo_crecimiento_pct",v)} placeholder="ej. 146.53"/>
+      <Label t="Objetivo de crecimiento anual (cantidad de pólizas nuevas)"/>
+      <Inp type="number" value={f.objetivo_crecimiento_polizas} onChange={v=>set("objetivo_crecimiento_polizas",v)} placeholder="ej. 655"/>
+      {pctDerivado && <div style={{fontSize:10,color:T.t3,marginTop:4}}>
+        Equivale a {pctDerivado}% de crecimiento · total a diciembre: {fmtN(base + objetivo)} pólizas
+      </div>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
       <div><Label t="Piso premio promedio ($)"/><Inp type="number" value={f.objetivo_premio_promedio_min} onChange={v=>set("objetivo_premio_promedio_min",v)}/></div>
@@ -53,12 +132,12 @@ function FormObjetivoAnual({ anioSugerido, onGuardar, onCancelar }) {
     <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
       {onCancelar && <BtnS onClick={onCancelar}>Cancelar</BtnS>}
       <BtnP onClick={()=>{
-        if(!f.nombre_udn.trim()||!f.anio||!f.polizas_base_diciembre||!f.objetivo_crecimiento_pct) return;
+        if(!f.nombre_udn.trim()||!f.anio||!f.polizas_base_diciembre||!f.objetivo_crecimiento_polizas) return;
         onGuardar({
           anio: Number(f.anio),
           nombre_udn: f.nombre_udn.trim(),
           polizas_base_diciembre: Number(f.polizas_base_diciembre),
-          objetivo_crecimiento_pct: Number(f.objetivo_crecimiento_pct),
+          objetivo_crecimiento_polizas: Number(f.objetivo_crecimiento_polizas),
           objetivo_premio_promedio_min: f.objetivo_premio_promedio_min ? Number(f.objetivo_premio_promedio_min) : null,
           objetivo_tasa_rescate_max: f.objetivo_tasa_rescate_max ? Number(f.objetivo_tasa_rescate_max) : null,
         });
@@ -159,7 +238,7 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
   const ultimo = historial[0] ?? null;
   const avanceDeEsteMes = historial.find(a => a.periodo === periodoActualISO) ?? null;
 
-  const semCrecimiento = ultimo ? clasificarCrecimiento(ultimo.crecimiento_acumulado_pct, objetivo.objetivo_crecimiento_pct, mesDePeriodo(ultimo.periodo)) : { nivel:"sin_datos", color:"t3" };
+  const semCrecimiento = ultimo ? clasificarCrecimiento(ultimo.crecimiento_ac_polizas, objetivo.objetivo_crecimiento_polizas, mesDePeriodo(ultimo.periodo)) : { nivel:"sin_datos", color:"t3" };
   const semPremio = ultimo ? clasificarPremio(ultimo.premio_promedio_acumulado, objetivo.objetivo_premio_promedio_min) : { nivel:"sin_datos", color:"t3" };
   const semRescate = ultimo ? clasificarRescate(ultimo.tasa_rescate_acumulada, objetivo.objetivo_tasa_rescate_max) : { nivel:"sin_datos", color:"t3" };
 
@@ -173,8 +252,9 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
       </BtnP>
     </div>
     <div style={{fontSize:11,color:T.t3,marginBottom:18}}>
-      Objetivo: crecer {objetivo.objetivo_crecimiento_pct}% sobre {fmtN(objetivo.polizas_base_diciembre)} pólizas
-      (base dic. {objetivo.anio - 1}){objetivo.objetivo_premio_promedio_min ? ` · premio promedio ≥ ${fmt$(objetivo.objetivo_premio_promedio_min)}` : ""}
+      Objetivo: sumar {fmtN(objetivo.objetivo_crecimiento_polizas)} pólizas nuevas sobre {fmtN(objetivo.polizas_base_diciembre)}
+      (base dic. {objetivo.anio - 1}) → {fmtN(objetivo.polizas_base_diciembre + objetivo.objetivo_crecimiento_polizas)} a diciembre {objetivo.anio}
+      {objetivo.objetivo_premio_promedio_min ? ` · premio promedio ≥ ${fmt$(objetivo.objetivo_premio_promedio_min)}` : ""}
       {objetivo.objetivo_tasa_rescate_max != null ? ` · rescates ≤ ${objetivo.objetivo_tasa_rescate_max}%` : ""}
     </div>
 
@@ -184,8 +264,8 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
       </Card>
     ) : <>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-        <Semaforo titulo="Crecimiento de pólizas" valor={`${ultimo.crecimiento_acumulado_pct ?? "—"}%`}
-          sub={`${fmtN(ultimo.crecimiento_ac_polizas)} pólizas · ${ultimo.avance_objetivo_pct ?? "—"}% del objetivo anual`}
+        <Semaforo titulo="Crecimiento de pólizas" valor={fmtN(ultimo.crecimiento_ac_polizas)}
+          sub={`${ultimo.crecimiento_acumulado_pct ?? "—"}% acumulado · objetivo ${fmtN(objetivo.objetivo_crecimiento_polizas)}`}
           nivel={semCrecimiento.nivel} color={semCrecimiento.color}/>
         <Semaforo titulo="Premio promedio" valor={fmt$(ultimo.premio_promedio_acumulado)}
           sub={objetivo.objetivo_premio_promedio_min ? `piso ${fmt$(objetivo.objetivo_premio_promedio_min)}` : "sin piso definido"}
@@ -193,6 +273,38 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
         <Semaforo titulo="Tasa de rescate" valor={`${ultimo.tasa_rescate_acumulada ?? "—"}%`}
           sub={objetivo.objetivo_tasa_rescate_max!=null ? `techo ${objetivo.objetivo_tasa_rescate_max}%` : "sin techo definido"}
           nivel={semRescate.nivel} color={semRescate.color}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+        <Card style={{padding:"14px 16px"}}>
+          <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>
+            Pólizas: objetivo vs. real
+          </div>
+          <GraficoObjetivo formatY={(v)=>fmtN(Math.round(v))} series={[
+            { label:"Objetivo", color:T.ambar, dashed:true,
+              puntos: puntosObjetivoLineal(objetivo.objetivo_crecimiento_polizas, objetivo.polizas_base_diciembre) },
+            { label:"Real", color:T.azul, dashed:false,
+              puntos: puntosReal(historial, "crecimiento_ac_polizas", objetivo.polizas_base_diciembre) },
+          ]}/>
+        </Card>
+        <Card style={{padding:"14px 16px"}}>
+          <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>
+            Premio promedio: piso vs. real
+          </div>
+          <GraficoObjetivo formatY={(v)=>fmt$(v)} series={[
+            { label:"Piso", color:T.ambar, dashed:true, puntos: puntosObjetivoPlano(objetivo.objetivo_premio_promedio_min) },
+            { label:"Real", color:T.verde, dashed:false, puntos: puntosReal(historial, "premio_promedio_acumulado") },
+          ]}/>
+        </Card>
+        <Card style={{padding:"14px 16px"}}>
+          <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>
+            Tasa de rescate: techo vs. real
+          </div>
+          <GraficoObjetivo formatY={(v)=>`${v.toFixed(1)}%`} series={[
+            { label:"Techo", color:T.rojo, dashed:true, puntos: puntosObjetivoPlano(objetivo.objetivo_tasa_rescate_max) },
+            { label:"Real", color:T.azulL, dashed:false, puntos: puntosReal(historial, "tasa_rescate_acumulada") },
+          ]}/>
+        </Card>
       </div>
 
       <Card style={{padding:0,overflow:"hidden"}}>
