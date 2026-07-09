@@ -6,12 +6,14 @@ import { useOrganizadores } from "./hooks/useOrganizadores";
 import { usePolizas } from "./hooks/usePolizas";
 import { useOrganizadorCodigos } from "./hooks/useOrganizadorCodigos";
 import { useOrganizadorKpis } from "./hooks/useOrganizadorKpis";
+import { useUdnObjetivos } from "./hooks/useUdnObjetivos";
 import { supabase } from "./lib/supabase";
 import { importarPolizasDesdeExcel } from "./lib/importarPolizas";
 import { importarSignosDesdeArchivos } from "./lib/importarSignos";
 import { calcularIndicePenetracion, calcularOportunidad, calcularFaltantes, ultimoPeriodo } from "./lib/fuerzaComercial";
 import Login from "./components/Login";
 import FichaOrganizador from "./components/FichaOrganizador";
+import PanelObjetivosUDN from "./components/PanelObjetivosUDN";
 import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS } from "./lib/ui.jsx";
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -291,6 +293,7 @@ const NAV_ITEMS = [
   {id:"dashboard",       ico:"▦",label:"Dashboard"},
   {id:"equipo",          ico:"◈",label:"Equipo"},
   {id:"organizaciones",  ico:"▣",label:"Organizaciones"},
+  {id:"objetivos",       ico:"◆",label:"Mis Objetivos"},
   {id:"alertas",         ico:"◉",label:"Alertas"},
   {id:"metricas",        ico:"◎",label:"Métricas"},
 ];
@@ -1414,6 +1417,8 @@ export default function App() {
   const { polizas, refetch: refetchPolizas } = usePolizas();
   const { organizadorCodigos, refetch: refetchOrganizadorCodigos } = useOrganizadorCodigos();
   const { organizadorKpis, refetch: refetchOrganizadorKpis } = useOrganizadorKpis();
+  const { objetivos: udnObjetivos, avanceMensual: udnAvanceMensual, loading: udnLoading, error: udnError,
+    crearObjetivoAnual, guardarAvanceMensual } = useUdnObjetivos();
   const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
@@ -1575,6 +1580,26 @@ export default function App() {
     showToast("✅",`${datosNuevaOrg.razon_social} agregada`);
   }
 
+  async function crearObjetivoUdn(datos) {
+    const { error } = await crearObjetivoAnual(datos);
+    if (error) {
+      console.error('Error al guardar el objetivo de UDN:', error);
+      alert('No se pudo guardar: ' + error.message);
+      return;
+    }
+    showToast("✅", `Objetivo ${datos.anio} de ${datos.nombre_udn} guardado`);
+  }
+
+  async function guardarAvanceUdn(udnObjetivoId, periodo, datos) {
+    const { error } = await guardarAvanceMensual(udnObjetivoId, periodo, datos);
+    if (error) {
+      console.error('Error al guardar el avance mensual:', error);
+      alert('No se pudo guardar: ' + error.message);
+      return;
+    }
+    showToast("✅", `Avance de ${periodo.slice(0,7)} guardado`);
+  }
+
   async function manejarArchivoPolizas(ev) {
     const file = ev.target.files?.[0];
     ev.target.value = ""; // permite reimportar el mismo archivo si hace falta
@@ -1647,6 +1672,7 @@ export default function App() {
   const vista=tab==="dashboard"?<Dashboard esps={esps} onVer={verE} onNuevo={()=>setShowN(true)} loadingEsp={espLoading} errorEsp={espError} oportunidadTotal={oportunidadTotal}/>
     :tab==="equipo"?<PanelEquipo esps={esps} onVer={verE} onNuevo={()=>setShowN(true)}/>
     :tab==="organizaciones"?<PanelOrganizaciones organizadoresConDatos={organizadoresConDatos} loading={orgLoading} error={orgError} onNuevo={()=>setShowOrgN(true)} onImportar={()=>fileImportRef.current?.click()} importando={importando} onImportarSignos={()=>fileSignosRef.current?.click()} importandoSignos={importandoSignos} faltantes={faltantes} onVer={verOrg}/>
+    :tab==="objetivos"?<PanelObjetivosUDN objetivos={udnObjetivos} avanceMensual={udnAvanceMensual} loading={udnLoading} error={udnError} onCrearObjetivo={crearObjetivoUdn} onGuardarAvance={guardarAvanceUdn}/>
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
     :<PanelMetricas esps={esps} onVer={verE}/>;
 
