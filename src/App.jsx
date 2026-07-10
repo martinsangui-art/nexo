@@ -14,7 +14,7 @@ import { calcularIndicePenetracion, calcularOportunidad, calcularFaltantes, ulti
 import Login from "./components/Login";
 import FichaOrganizador from "./components/FichaOrganizador";
 import PanelObjetivosUDN from "./components/PanelObjetivosUDN";
-import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS } from "./lib/ui.jsx";
+import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS, Icon, Num } from "./lib/ui.jsx";
 
 /* ═══════════════════════════════════════════════════════════════════
    NEXO v4.1 — Seguimiento Comercial · Federación Patronal Retiro
@@ -28,18 +28,18 @@ if (typeof document !== "undefined" && !document.getElementById("nexo-font")) {
   const link = document.createElement("link");
   link.id = "nexo-font";
   link.rel = "stylesheet";
-  link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap";
+  link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Bodoni+Moda:wght@600;700;900&display=swap";
   document.head.appendChild(link);
   // Reset global para que Inter tome efecto
   const style = document.createElement("style");
   style.textContent = `
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', -apple-system, sans-serif !important; background: #070B14; }
+    body { font-family: 'Inter', -apple-system, sans-serif !important; }
     /* Grilla de puntos — elemento ambiente sutil */
     body::before {
       content: '';
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image: radial-gradient(circle, rgba(59,110,245,0.08) 1px, transparent 1px);
+      background-image: radial-gradient(circle, rgba(201,161,94,0.08) 1px, transparent 1px);
       background-size: 28px 28px;
     }
     /* Números tabulares para datos */
@@ -100,14 +100,14 @@ const proyeccion = e => {
 // Alertas automáticas
 const alertas = e => {
   const r=[], s=sem(e), dsc=dD(e.contactos[0]?.fecha), dr=dH(e.plan.fechaFin);
-  if(s.label==="Atrasado")           r.push({p:0,ico:"🚨",msg:"Muy atrasado — intervención urgente",    c:T.rojo});
-  if(dr!==null&&dr<=0)               r.push({p:0,ico:"⚡",msg:"Plan vencido — definir renovación",       c:T.rojo});
-  if(e.avance.rescates>0)            r.push({p:0,ico:"📉",msg:`${e.avance.rescates} rescate${e.avance.rescates>1?"s":""} en el período`,c:T.rojo});
-  if(dsc>14)                         r.push({p:1,ico:"📞",msg:`Sin contacto hace ${dsc} días`,            c:T.ambar});
-  if(dr!==null&&dr>0&&dr<=21)        r.push({p:1,ico:"⏱", msg:`Cierre en ${dr} días`,                    c:T.ambar});
-  if(e.inconvenientes?.trim()&&dsc>5)r.push({p:1,ico:"⚠️",msg:"Inconvenientes sin resolver",             c:T.ambar});
-  if(s.label==="En riesgo")          r.push({p:1,ico:"🟡",msg:"Ritmo por debajo del objetivo",            c:T.ambar});
-  if(pct(e.avance.polizas,e.plan.polizasObj)>=100) r.push({p:2,ico:"🏆",msg:"Objetivo cumplido",         c:T.verde});
+  if(s.label==="Atrasado")           r.push({p:0,ico:"alertCircle",msg:"Muy atrasado — intervención urgente",    c:T.rojo});
+  if(dr!==null&&dr<=0)               r.push({p:0,ico:"zap",msg:"Plan vencido — definir renovación",       c:T.rojo});
+  if(e.avance.rescates>0)            r.push({p:0,ico:"trendingDown",msg:`${e.avance.rescates} rescate${e.avance.rescates>1?"s":""} en el período`,c:T.rojo});
+  if(dsc>14)                         r.push({p:1,ico:"phone",msg:`Sin contacto hace ${dsc} días`,            c:T.ambar});
+  if(dr!==null&&dr>0&&dr<=21)        r.push({p:1,ico:"clock", msg:`Cierre en ${dr} días`,                    c:T.ambar});
+  if(e.inconvenientes?.trim()&&dsc>5)r.push({p:1,ico:"alertTriangle",msg:"Inconvenientes sin resolver",             c:T.ambar});
+  if(s.label==="En riesgo")          r.push({p:1,ico:"alertCircle",msg:"Ritmo por debajo del objetivo",            c:T.ambar});
+  if(pct(e.avance.polizas,e.plan.polizasObj)>=100) r.push({p:2,ico:"award",msg:"Objetivo cumplido",         c:T.verde});
   return r.sort((a,b)=>a.p-b.p);
 };
 
@@ -227,10 +227,10 @@ const DEMO = [
 
 // Los "id" son los valores válidos que acepta el check constraint
 // contactos_canal_check en Supabase — deben ir en minúscula sin tilde.
-const TIPOS = [{id:"email",e:"✉️",l:"Email"},{id:"whatsapp",e:"💬",l:"WhatsApp"},
-               {id:"llamada",e:"📞",l:"Llamada"},{id:"presencial",e:"🤝",l:"Presencial"},
-               {id:"video",e:"🎥",l:"Video"},{id:"agencia",e:"🏢",l:"Agencia"},
-               {id:"oficina",e:"🏬",l:"Oficina"},{id:"comision",e:"💼",l:"Comisión"}];
+const TIPOS = [{id:"email",e:"mail",l:"Email"},{id:"whatsapp",e:"messageCircle",l:"WhatsApp"},
+               {id:"llamada",e:"phone",l:"Llamada"},{id:"presencial",e:"users",l:"Presencial"},
+               {id:"video",e:"video",l:"Video"},{id:"agencia",e:"building",l:"Agencia"},
+               {id:"oficina",e:"building",l:"Oficina"},{id:"comision",e:"briefcase",l:"Comisión"}];
 const TIPO_E = Object.fromEntries(TIPOS.map(t=>[t.id,t.e]));
 
 // ─── ÁTOMOS (especialista-específicos; Barra/Card/Sec/etc en ./lib/ui.jsx) ──
@@ -290,30 +290,68 @@ const SemTag = ({e,sm}) => {
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  {id:"dashboard",       ico:"▦",label:"Dashboard"},
-  {id:"equipo",          ico:"◈",label:"Equipo"},
-  {id:"organizaciones",  ico:"▣",label:"Organizaciones"},
-  {id:"objetivos",       ico:"◆",label:"Mis Objetivos"},
-  {id:"alertas",         ico:"◉",label:"Alertas"},
-  {id:"metricas",        ico:"◎",label:"Métricas"},
+  {id:"dashboard",       label:"Dashboard"},
+  {id:"equipo",          label:"Equipo"},
+  {id:"organizaciones",  label:"Organizaciones"},
+  {id:"objetivos",       label:"Mis Objetivos"},
+  {id:"alertas",         label:"Alertas"},
+  {id:"metricas",        label:"Métricas"},
 ];
 
+const NAV_ICON_PATHS = {
+  dashboard: <>
+    <rect className="stroke-part" x="3.5" y="3.5" width="7" height="17" rx="1.5" strokeWidth="1.6"/>
+    <rect className="stroke-part" x="13.5" y="3.5" width="7" height="10" rx="1.5" strokeWidth="1.6"/>
+    <circle className="fill-part" cx="17" cy="17.5" r="2.3"/>
+  </>,
+  equipo: <>
+    <circle className="stroke-part" cx="9" cy="7.5" r="3" strokeWidth="1.6"/>
+    <path className="stroke-part" d="M4 20c0-3.3 2.2-5.7 5-5.7s5 2.4 5 5.7" strokeWidth="1.6" strokeLinecap="round"/>
+    <circle className="fill-part" cx="17.5" cy="9" r="1.8"/>
+    <path className="stroke-part" d="M15 20c0-2.6 1.1-4.5 2.5-5.3" strokeWidth="1.6" strokeLinecap="round"/>
+  </>,
+  organizaciones: <>
+    <path className="stroke-part" d="M5 20V6.5L12 3l7 3.5V20" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path className="stroke-part" d="M9 20v-5h6v5" strokeWidth="1.6"/>
+    <circle className="fill-part" cx="12" cy="10.5" r="1.4"/>
+  </>,
+  objetivos: <>
+    <circle className="stroke-part" cx="12" cy="12" r="8" strokeWidth="1.6"/>
+    <circle className="stroke-part" cx="12" cy="12" r="4" strokeWidth="1.4"/>
+    <circle className="fill-part" cx="12" cy="12" r="1.6"/>
+  </>,
+  alertas: <>
+    <path className="stroke-part" d="M12 3.5c-3 0-5 2.3-5 5.6 0 4.4-1.5 6-2.3 6.9h14.6c-.8-.9-2.3-2.5-2.3-6.9 0-3.3-2-5.6-5-5.6z" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path className="stroke-part" d="M9.7 19a2.3 2.3 0 0 0 4.6 0" strokeWidth="1.6"/>
+    <circle className="fill-part" cx="17.5" cy="6" r="1.8"/>
+  </>,
+  metricas: <>
+    <path className="stroke-part" d="M4 19V9M9.3 19V5M14.6 19v-7M19.9 19v-4" strokeWidth="1.7" strokeLinecap="round"/>
+    <circle className="fill-part" cx="19.9" cy="6.5" r="1.8"/>
+  </>,
+};
+
 function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
-  return <aside style={{width:210,flexShrink:0,background:T.s1,borderRight:`1px solid ${T.bd}`,
-    display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,userSelect:"none"}}>
+  const [colapsado,setColapsado]=useState(()=>localStorage.getItem('nexo-sidebar-colapsado')==='true');
+  useEffect(()=>{localStorage.setItem('nexo-sidebar-colapsado',String(colapsado));},[colapsado]);
+
+  return <aside style={{width:colapsado?72:210,flexShrink:0,borderRight:`1px solid ${T.bd}`,
+    display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,zIndex:100,userSelect:"none",
+    transition:"width .2s ease"}}>
     {/* Logo */}
-    <div style={{padding:"22px 18px 18px",borderBottom:`1px solid ${T.bd}`}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
+    <div style={{padding:colapsado?"20px 0 16px":"22px 18px 18px",borderBottom:`1px solid ${T.bd}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:colapsado?0:10,
+        justifyContent:colapsado?"center":"flex-start"}}>
         <div style={{width:32,height:32,borderRadius:9,flexShrink:0,
-          background:`linear-gradient(135deg,${T.azul},${T.azulL})`,
-          display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,
-          boxShadow:`0 0 16px ${T.azul}55`}}>🔗</div>
-        <div>
-          <div style={{fontSize:16,fontWeight:900,color:T.t1,letterSpacing:"-.8px"}}>NEXO</div>
+          border:"1px solid var(--gold-dim)",
+          display:"flex",alignItems:"center",justifyContent:"center",color:"var(--gold-bright)",
+          boxShadow:"0 0 12px rgba(201,161,94,0.18)"}}><Icon name="link" size={16}/></div>
+        {!colapsado&&<div>
+          <div style={{fontSize:17,fontWeight:700,color:T.t1,letterSpacing:".2px",fontFamily:"var(--font-display)"}}>NEXO</div>
           <div style={{fontSize:9,color:T.t3,letterSpacing:".14em",textTransform:"uppercase"}}>Retiro · FP</div>
-        </div>
+        </div>}
       </div>
-      {onSignOut&&
+      {onSignOut&&!colapsado&&
         <button onClick={onSignOut} style={{marginTop:14,width:"100%",padding:"7px 10px",
           borderRadius:7,border:`1px solid ${T.bd}`,background:"transparent",
           color:T.t2,fontFamily:"inherit",fontSize:11,fontWeight:600,cursor:"pointer"}}>
@@ -322,27 +360,40 @@ function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
     </div>
 
     {/* Nav */}
-    <nav style={{flex:1,padding:"8px"}}>
-      {NAV_ITEMS.map(it=>(
-        <button key={it.id} onClick={()=>onTab(it.id)} style={{
-          display:"flex",alignItems:"center",gap:10,width:"100%",
-          padding:"9px 11px",borderRadius:7,border:"none",
-          background:tab===it.id?T.azulS:"transparent",
-          color:tab===it.id?T.azulL:T.t2,fontFamily:"inherit",fontSize:13,
-          fontWeight:tab===it.id?700:400,cursor:"pointer",textAlign:"left",
-          borderLeft:`2px solid ${tab===it.id?T.azul:"transparent"}`,
-          marginBottom:2,transition:"all .12s"}}>
-          <span style={{fontSize:15,fontFamily:"monospace"}}>{it.ico}</span>
-          {it.label}
-          {it.id==="alertas"&&cnt>0&&
-            <span style={{marginLeft:"auto",background:T.rojo,color:"#fff",borderRadius:10,
-              fontSize:10,fontWeight:900,padding:"1px 6px",boxShadow:`0 0 8px ${T.rojo}88`}}>{cnt}</span>}
-        </button>
-      ))}
+    <nav style={{flex:1,padding:colapsado?"8px 0":"8px"}}>
+      {NAV_ITEMS.map(it=>{
+        const active=tab===it.id;
+        return <div key={it.id} className="nav-item-wrap">
+          <button onClick={()=>onTab(it.id)} className={`nav-item${active?" active":""}`} style={{
+            display:"flex",alignItems:"center",
+            justifyContent:colapsado?"center":"flex-start",
+            gap:colapsado?0:10,
+            width:colapsado?44:"100%",height:colapsado?44:"auto",
+            margin:colapsado?"0 auto 4px":"0 0 2px",
+            padding:colapsado?0:"9px 11px",borderRadius:7,border:"none",
+            background:active?"var(--gold-dim)":"transparent",
+            color:active?"var(--gold-bright)":T.t2,fontFamily:"inherit",fontSize:13,
+            fontWeight:active?700:400,cursor:"pointer",textAlign:"left",
+            transition:"all .12s"}}>
+            <svg viewBox="0 0 24 24" fill="none" style={{width:18,height:18,flexShrink:0}}>
+              {NAV_ICON_PATHS[it.id]}
+            </svg>
+            {!colapsado&&it.label}
+            {!colapsado&&it.id==="alertas"&&cnt>0&&
+              <span style={{marginLeft:"auto",background:T.rojo,color:"#fff",borderRadius:10,
+                fontSize:10,fontWeight:900,padding:"1px 6px",boxShadow:`0 0 8px ${T.rojo}88`}}>{cnt}</span>}
+          </button>
+          {colapsado&&it.id==="alertas"&&cnt>0&&
+            <span style={{position:"absolute",top:2,right:10,background:T.rojo,color:"#fff",borderRadius:8,
+              fontSize:9,fontWeight:900,padding:"0 4px",lineHeight:"14px",boxShadow:`0 0 8px ${T.rojo}88`,
+              pointerEvents:"none"}}>{cnt}</span>}
+          {colapsado&&<span className="nav-tooltip">{it.label}</span>}
+        </div>;
+      })}
     </nav>
 
     {/* Mini estado del equipo */}
-    <div style={{padding:"10px 12px",borderTop:`1px solid ${T.bd}`,margin:"0 8px 8px"}}>
+    {!colapsado&&<div style={{padding:"10px 12px",borderTop:`1px solid ${T.bd}`,margin:"0 8px 8px"}}>
       <div style={{fontSize:9,color:T.t3,textTransform:"uppercase",letterSpacing:".1em",marginBottom:8}}>
         Estado del equipo
       </div>
@@ -358,6 +409,17 @@ function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
           </span>
         </div>;
       })}
+    </div>}
+
+    {/* Colapsar/expandir */}
+    <div style={{padding:"10px 8px",borderTop:`1px solid ${T.bd}`,display:"flex",
+      justifyContent:colapsado?"center":"flex-end",flexShrink:0}}>
+      <button onClick={()=>setColapsado(c=>!c)} title={colapsado?"Expandir":"Colapsar"} style={{
+        width:28,height:28,borderRadius:"50%",border:`1px solid ${T.bd}`,background:"transparent",
+        color:T.t2,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",
+        justifyContent:"center",flexShrink:0}}>
+        {colapsado?"›":"‹"}
+      </button>
     </div>
   </aside>;
 }
@@ -377,7 +439,7 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
       <div>
-        <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>Dashboard</div>
+        <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)"}}>Dashboard</div>
         <div style={{fontSize:12,color:T.t3,marginTop:3}}>
           {HOY.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
         </div>
@@ -388,23 +450,26 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
     {/* KPI strip */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
       {[
-        {l:"Pólizas",v:totP,sub:`obj ${objP}`,c:T.azul,   p:pct(totP,objP)},
+        {l:"Pólizas",v:totP,sub:`obj ${objP}`,c:T.t1,   p:pct(totP,objP)},
         {l:"Prima",  v:fmt$(totPr),sub:`obj ${fmt$(objPr)}`,c:T.verde, p:pct(totPr,objPr)},
         {l:"En ritmo",v:enR,sub:`de ${esps.length} esp.`,c:T.verde,p:null},
         {l:"Atrasados",v:atr,sub:"requieren acción",c:T.rojo,p:null},
         {l:"Rescates",v:res,sub:"última semana",c:res>0?T.rojo:T.t3,p:null},
         {l:"Oportunidad sin explotar",v:fmt$(oportunidadTotal||0),sub:"fuerza comercial",c:oportunidadTotal>0?T.verde:T.t3,p:null,
           title:"Suma de lo que cada organizador podría generar en prima de retiro si convirtiera su cartera SG+ART al ritmo del mejor organizador del período (índice propio de NEXO, no de FP — ver detalle en su ficha)."},
-      ].map(k=><Card key={k.l} title={k.title} style={{padding:"16px 18px",position:"relative",overflow:"hidden",
-          borderTop:"2px solid "+T.azul,cursor:k.title?"help":"default"}}>
+      ].map(k=>{
+        const grande = String(k.v).length>7;
+        return <Card key={k.l} title={k.title} style={{padding:"16px 18px",position:"relative",
+          border:"1px solid var(--hairline)",cursor:k.title?"help":"default"}}>
         <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{k.l}</div>
-        <div style={{fontSize:26,fontWeight:900,color:k.c,letterSpacing:"-1px",lineHeight:1}}>{k.v}</div>
+        <Num style={{display:"block",fontSize:grande?18:26,fontWeight:900,color:k.c,
+          letterSpacing:grande?"-.3px":"-1px",lineHeight:1}}>{k.v}</Num>
         {k.p!==null&&<div style={{marginTop:7}}>
           <Barra val={k.p} tot={100} color={k.c} h={4}/>
           <div style={{fontSize:10,color:k.c,fontWeight:700,marginTop:3}}>{k.p}%</div>
         </div>}
         <div style={{fontSize:10,color:T.t3,marginTop:k.p!==null?0:6}}>{k.sub}</div>
-      </Card>)}
+      </Card>;})}
     </div>
 
     <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:16,minWidth:0,overflow:"hidden"}}>
@@ -450,9 +515,9 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
                       textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.org}</div>
                   </td>
                   <td style={{padding:"11px 12px",textAlign:"center"}}>
-                    <div style={{fontWeight:900,fontSize:15,color:s.c}}>
+                    <Num style={{display:"block",fontWeight:900,fontSize:15,color:s.c}}>
                       {e.avance.polizas}<span style={{fontSize:10,color:T.t3,fontWeight:400}}>/{e.plan.polizasObj}</span>
-                    </div>
+                    </Num>
                     <div style={{marginTop:3,width:60,margin:"3px auto 0"}}>
                       <Barra val={pp} tot={100} color={s.c} h={4}/>
                     </div>
@@ -471,7 +536,7 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
                     <span style={{fontSize:11,color:dsc>7?T.ambar:T.t3,fontWeight:dsc>7?700:400}}>
                       {e.contactos[0]?`${dsc}d`:"—"}
                     </span>
-                    {als.length>0&&<div style={{fontSize:10,color:als[0].c,marginTop:2}}>{als[0].ico}</div>}
+                    {als.length>0&&<div style={{marginTop:2,display:"flex",justifyContent:"center"}}><Icon name={als[0].ico} color={als[0].c} size={12}/></div>}
                   </td>
                 </tr>;
               })}
@@ -492,26 +557,27 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
               <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>
                 Ritmo actual → estimación
               </div>
-              <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1.5px",
+              <Num style={{display:"block",fontSize:32,fontWeight:900,letterSpacing:"-1.5px",
                 color:proyG>=objP?T.verde:proyG>=objP*.7?T.ambar:T.rojo}}>
                 ~{proyG}
-              </div>
+              </Num>
               <div style={{fontSize:11,color:T.t3}}>
-                pólizas est. vs <span style={{color:T.t1,fontWeight:700}}>{objP} obj.</span>
+                pólizas est. vs <Num style={{color:T.t1,fontWeight:700}}>{objP} obj.</Num>
               </div>
             </div>
             <div style={{textAlign:"center"}}>
-              <div style={{fontSize:28,fontWeight:900,
+              <Num style={{display:"block",fontSize:28,fontWeight:900,
                 color:proyG>=objP?T.verde:proyG>=objP*.7?T.ambar:T.rojo}}>
                 {pct(proyG,objP)}%
-              </div>
+              </Num>
               <div style={{fontSize:9,color:T.t3,textTransform:"uppercase"}}>cumplimiento est.</div>
             </div>
           </div>
           <Barra val={proyG} tot={objP} color={proyG>=objP?T.verde:proyG>=objP*.7?T.ambar:T.rojo} h={8}/>
-          <div style={{fontSize:11,color:T.t3,marginTop:8,textAlign:"center"}}>
-            {proyG>=objP?"✅ El equipo llegaría al objetivo"
-              :`⚠️ Faltan ~${Math.max(0,objP-proyG)} pólizas`}
+          <div style={{fontSize:11,color:T.t3,marginTop:8,textAlign:"center",display:"flex",
+            alignItems:"center",justifyContent:"center",gap:5}}>
+            {proyG>=objP?<><Icon name="check" size={12} color={T.verde}/> El equipo llegaría al objetivo</>
+              :<><Icon name="alertTriangle" size={12} color={T.ambar}/> {`Faltan ~${Math.max(0,objP-proyG)} pólizas`}</>}
           </div>
         </Card>
 
@@ -520,13 +586,14 @@ function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportunidadTotal}) {
           letterSpacing:".08em",marginBottom:10}}>Alertas del día</div>
         <Card>
           {todasAl.length===0
-            ?<div style={{padding:18,textAlign:"center",color:T.t3,fontSize:12}}>✅ Sin alertas activas</div>
+            ?<div style={{padding:18,textAlign:"center",color:T.t3,fontSize:12,display:"flex",
+                alignItems:"center",justifyContent:"center",gap:6}}><Icon name="check" color={T.verde}/> Sin alertas activas</div>
             :todasAl.map((a,i)=><div key={i} onClick={()=>onVer(a.esp)}
               style={{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 14px",
                 borderBottom:i<todasAl.length-1?`1px solid ${T.bd}`:"none",cursor:"pointer"}}
               onMouseEnter={ev=>ev.currentTarget.style.background=T.s3}
               onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
-              <span style={{fontSize:13,flexShrink:0,marginTop:1}}>{a.ico}</span>
+              <span style={{flexShrink:0,marginTop:1,color:a.c}}><Icon name={a.ico} size={14}/></span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:12,fontWeight:700,color:T.t1}}>{a.esp.nombre}</div>
                 <div style={{fontSize:11,color:a.c,marginTop:1}}>{a.msg}</div>
@@ -556,7 +623,7 @@ function PanelEquipo({esps,onVer,onNuevo}) {
 
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
+      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)"}}>
         Equipo <span style={{fontSize:14,fontWeight:400,color:T.t3}}>({esps.length})</span>
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -611,11 +678,11 @@ function TarjetaEsp({e,onPress}) {
         <div style={{background:T.s3,borderRadius:8,padding:"10px 12px"}}>
           <div style={{fontSize:9,color:T.t3,textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Pólizas vigentes</div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:6}}>
-            <span style={{fontSize:22,fontWeight:900,color:s.c,letterSpacing:"-1px"}}>{e.avance.polizas}</span>
-            <span style={{fontSize:11,color:T.t3}}>/ {e.plan.polizasObj}</span>
+            <Num style={{fontSize:22,fontWeight:900,color:s.c,letterSpacing:"-1px"}}>{e.avance.polizas}</Num>
+            <Num style={{fontSize:11,color:T.t3}}>/ {e.plan.polizasObj}</Num>
           </div>
           <Barra val={pp} tot={100} color={s.c} h={6}/>
-          <div style={{fontSize:10,fontWeight:700,color:s.c,marginTop:3}}>{pp}%</div>
+          <Num style={{display:"block",fontSize:10,fontWeight:700,color:s.c,marginTop:3}}>{pp}%</Num>
         </div>
         {/* Tendencia + ritmo */}
         <div style={{background:T.s3,borderRadius:8,padding:"10px 12px"}}>
@@ -635,7 +702,7 @@ function TarjetaEsp({e,onPress}) {
         marginBottom:10,padding:"8px 10px",background:T.s3,borderRadius:8}}>
         <div>
           <div style={{fontSize:9,color:T.t3,textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Prima mensual</div>
-          <div style={{fontSize:16,fontWeight:900,color:T.verde}}>{fmt$(e.avance.prima)}</div>
+          <Num style={{display:"block",fontSize:16,fontWeight:900,color:T.verde}}>{fmt$(e.avance.prima)}</Num>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:9,color:T.t3,marginBottom:2}}>obj. {fmt$(e.plan.primaObj)}</div>
@@ -646,13 +713,14 @@ function TarjetaEsp({e,onPress}) {
       {/* Footer: último contacto + alertas */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
         paddingTop:10,borderTop:`1px solid ${T.bd}`}}>
-        <span style={{fontSize:11,color:dsc>7?T.ambar:T.t3,fontWeight:dsc>7?700:400}}>
-          {e.contactos[0]?`${TIPO_E[e.contactos[0].tipo]||"📌"} hace ${dsc}d`:"Sin contactos"}
+        <span style={{fontSize:11,color:dsc>7?T.ambar:T.t3,fontWeight:dsc>7?700:400,
+          display:"inline-flex",alignItems:"center",gap:4}}>
+          {e.contactos[0]?<><Icon name={TIPO_E[e.contactos[0].tipo]||"pin"} size={11}/>{`hace ${dsc}d`}</>:"Sin contactos"}
         </span>
         <span style={{display:"flex",gap:3}}>
           {als.slice(0,3).map((a,i)=><span key={i} title={a.msg}
-            style={{fontSize:12,background:`${a.c}18`,color:a.c,borderRadius:4,
-              padding:"2px 5px",border:`1px solid ${a.c}22`}}>{a.ico}</span>)}
+            style={{display:"inline-flex",background:`${a.c}18`,color:a.c,borderRadius:4,
+              padding:"3px 6px",border:`1px solid ${a.c}22`}}><Icon name={a.ico} size={12}/></span>)}
         </span>
       </div>
     </div>
@@ -663,21 +731,21 @@ function TarjetaEsp({e,onPress}) {
 function PanelOrganizaciones({organizadoresConDatos,loading,error,onNuevo,onImportar,importando,onImportarSignos,importandoSignos,faltantes,onVer}) {
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
+      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)"}}>
         Organizaciones <span style={{fontSize:14,fontWeight:400,color:T.t3}}>({organizadoresConDatos.length})</span>
       </div>
       <div style={{display:"flex",gap:8}}>
-        <BtnS onClick={onImportar} style={importando?{opacity:.6,pointerEvents:"none"}:{}}>
-          {importando?"Importando...":"⇪ Importar pólizas (Excel)"}</BtnS>
-        <BtnS onClick={onImportarSignos} style={importandoSignos?{opacity:.6,pointerEvents:"none"}:{}}>
-          {importandoSignos?"Importando...":"⇪ Importar Signos (ZIP o PDF)"}</BtnS>
+        <BtnS onClick={onImportar} style={{display:"inline-flex",alignItems:"center",gap:6,...(importando?{opacity:.6,pointerEvents:"none"}:{})}}>
+          <Icon name="upload" size={13}/> {importando?"Importando...":"Importar pólizas (Excel)"}</BtnS>
+        <BtnS onClick={onImportarSignos} style={{display:"inline-flex",alignItems:"center",gap:6,...(importandoSignos?{opacity:.6,pointerEvents:"none"}:{})}}>
+          <Icon name="upload" size={13}/> {importandoSignos?"Importando...":"Importar Signos (ZIP o PDF)"}</BtnS>
         <BtnP onClick={onNuevo}>＋ Nueva organización</BtnP>
       </div>
     </div>
 
     {faltantes.length>0 && <Card style={{padding:"12px 16px",marginBottom:16,borderLeft:`3px solid ${T.ambar}`}}>
-      <div style={{fontSize:12,fontWeight:800,color:T.ambar,marginBottom:4}}>
-        ⚠️ {faltantes.length} organizador{faltantes.length>1?"es":""} con pólizas de retiro sin reporte Signos este período
+      <div style={{fontSize:12,fontWeight:800,color:T.ambar,marginBottom:4,display:"flex",alignItems:"center",gap:6}}>
+        <Icon name="alertTriangle" size={13}/> {faltantes.length} organizador{faltantes.length>1?"es":""} con pólizas de retiro sin reporte Signos este período
       </div>
       <div style={{fontSize:11,color:T.t2,lineHeight:1.6}}>
         {faltantes.map(f=>f.razonSocial).join(" · ")} — revisar si falta pedir el reporte o si son productores fuera de la estructura habitual.
@@ -705,12 +773,12 @@ function PanelOrganizaciones({organizadoresConDatos,loading,error,onNuevo,onImpo
                 <div style={{fontWeight:800,fontSize:14,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.razon_social}</div>
                 <div style={{fontSize:11,color:T.t3,marginTop:4}}>{o.zona||"Sin zona"}</div>
               </div>
-              {o.enFaltantes && <span title="Sin reporte Signos este período" style={{fontSize:13,flexShrink:0}}>⚠️</span>}
+              {o.enFaltantes && <span title="Sin reporte Signos este período" style={{flexShrink:0,color:T.ambar}}><Icon name="alertTriangle" size={13}/></span>}
             </div>
             {o.primaSgArt!=null && <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${T.bd}`,
               display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span title="Índice propio de NEXO: prima de retiro ÷ prima SG+ART (Signos) x 10.000. No es un dato de Federación Patronal — ver detalle en la ficha del organizador." style={{fontSize:10,color:T.t3,cursor:"help",borderBottom:`1px dotted ${T.t3}`}}>Índice {o.indice ?? "—"}</span>
-              {o.oportunidad>0 && <span style={{fontSize:12,fontWeight:800,color:T.verde}}>{fmt$(o.oportunidad)} oport.</span>}
+              <span title="Índice propio de NEXO: prima de retiro ÷ prima SG+ART (Signos) x 10.000. No es un dato de Federación Patronal — ver detalle en la ficha del organizador." style={{fontSize:10,color:T.t3,cursor:"help",borderBottom:`1px dotted ${T.t3}`}}>Índice <Num>{o.indice ?? "—"}</Num></span>
+              {o.oportunidad>0 && <Num style={{fontSize:12,fontWeight:800,color:T.verde}}>{fmt$(o.oportunidad)} oport.</Num>}
             </div>}
           </Card>)}
       </div>
@@ -725,12 +793,12 @@ function ModalNuevaOrganizacion({onGuardar,onCerrar}) {
     textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>{t}</label>;
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",display:"flex",
     alignItems:"center",justifyContent:"center",zIndex:300,backdropFilter:"blur(4px)"}}>
-    <div style={{background:T.s1,borderRadius:13,padding:26,width:440,
-      border:`1px solid ${T.bd}`,boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
+    <Card style={{borderRadius:13,padding:26,width:440,boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div style={{fontSize:17,fontWeight:900,color:T.t1}}>Nueva organización</div>
         <button onClick={onCerrar} style={{background:T.s3,border:"none",color:T.t2,
-          width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:13}}>✕</button>
+          width:26,height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
+          alignItems:"center",justifyContent:"center"}}><Icon name="x" size={13}/></button>
       </div>
       <div style={{marginBottom:10}}>
         <Label t="Razón social *"/>
@@ -746,7 +814,7 @@ function ModalNuevaOrganizacion({onGuardar,onCerrar}) {
           onGuardar({razon_social:razonSocial,zona:zona||null});}}>
           Crear organización</BtnP>
       </div>
-    </div>
+    </Card>
   </div>;
 }
 
@@ -754,40 +822,41 @@ function ModalNuevaOrganizacion({onGuardar,onCerrar}) {
 function PanelAlertas({esps,onVer}) {
   const todas=esps.flatMap(e=>alertas(e).map(a=>({...a,esp:e})));
   const grupos=[
-    {t:"🚨 Urgentes",items:todas.filter(a=>a.p===0&&a.c===T.rojo)},
-    {t:"📉 Rescates",items:todas.filter(a=>a.ico==="📉")},
-    {t:"📞 Sin contacto",items:todas.filter(a=>a.ico==="📞"||a.ico==="💬")},
-    {t:"⚠️ Inconvenientes",items:todas.filter(a=>a.ico==="⚠️")},
-    {t:"⏱ Cierres próximos",items:todas.filter(a=>a.ico==="⏱")},
-    {t:"🏆 Logros",items:todas.filter(a=>a.p===2)},
+    {t:"Urgentes",ico:"alertCircle",items:todas.filter(a=>a.p===0&&a.c===T.rojo)},
+    {t:"Rescates",ico:"trendingDown",items:todas.filter(a=>a.ico==="trendingDown")},
+    {t:"Sin contacto",ico:"phone",items:todas.filter(a=>a.ico==="phone"||a.ico==="messageCircle")},
+    {t:"Inconvenientes",ico:"alertTriangle",items:todas.filter(a=>a.ico==="alertTriangle")},
+    {t:"Cierres próximos",ico:"clock",items:todas.filter(a=>a.ico==="clock")},
+    {t:"Logros",ico:"award",items:todas.filter(a=>a.p===2)},
   ].filter(g=>g.items.length>0);
   const totalNo=todas.filter(a=>a.p<2).length;
 
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{marginBottom:22}}>
-      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
-        {totalNo===0?"Todo en orden ✅":`${totalNo} alerta${totalNo>1?"s":""} activa${totalNo>1?"s":""}`}
+      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)"}}>
+        {totalNo===0?"Todo en orden":`${totalNo} alerta${totalNo>1?"s":""} activa${totalNo>1?"s":""}`}
       </div>
       <div style={{fontSize:12,color:T.t3,marginTop:3}}>Generadas automáticamente por el estado de cada plan</div>
     </div>
     {grupos.length===0
       ?<Card style={{padding:48,textAlign:"center"}}>
-        <div style={{fontSize:40,marginBottom:12}}>✅</div>
+        <div style={{color:T.verde,marginBottom:12,display:"flex",justifyContent:"center"}}><Icon name="check" size={36}/></div>
         <div style={{fontSize:16,fontWeight:700,color:T.t2}}>Sin alertas activas</div>
         <div style={{fontSize:13,color:T.t3,marginTop:6}}>Todos los especialistas están en contacto y en ritmo.</div>
       </Card>
       :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
         {grupos.map(g=><div key={g.t}>
           <div style={{fontSize:10,fontWeight:700,color:T.t3,textTransform:"uppercase",
-            letterSpacing:".08em",marginBottom:8}}>{g.t}</div>
+            letterSpacing:".08em",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+            <Icon name={g.ico} size={11}/> {g.t}</div>
           <Card>
             {g.items.map((a,i)=><div key={i} onClick={()=>onVer(a.esp)}
               style={{display:"flex",gap:12,alignItems:"center",padding:"11px 14px",
                 borderBottom:i<g.items.length-1?`1px solid ${T.bd}`:"none",cursor:"pointer"}}
               onMouseEnter={ev=>ev.currentTarget.style.background=T.s3}
               onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
-              <div style={{width:32,height:32,borderRadius:7,flexShrink:0,background:`${a.c}15`,
-                display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>{a.ico}</div>
+              <div style={{width:32,height:32,borderRadius:7,flexShrink:0,background:`${a.c}15`,color:a.c,
+                display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name={a.ico} size={15}/></div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:13,color:T.t1}}>{a.esp.nombre}</div>
                 <div style={{fontSize:11,color:a.c,fontWeight:600,marginTop:1}}>{a.msg}</div>
@@ -810,10 +879,10 @@ function PanelMetricas({esps,onVer}) {
   const totPr=esps.reduce((s,e)=>s+e.avance.prima,0);
   const objPr=esps.reduce((s,e)=>s+e.plan.primaObj,0);
   const totC=esps.reduce((s,e)=>s+e.avance.comision,0);
-  const medals=["🥇","🥈","🥉"];
+  const medals=["#C9A15E","#B8B8C0","#B87333"]; // oro, plata, bronce
 
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
-    <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",marginBottom:20}}>Métricas del equipo</div>
+    <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)",marginBottom:20}}>Métricas del equipo</div>
 
     {/* Resumen en cards */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
@@ -837,8 +906,9 @@ function PanelMetricas({esps,onVer}) {
           const s=sem(e), pp=pct(e.avance.polizas,e.plan.polizasObj);
           return <div key={e.id} onClick={()=>onVer(e)}
             style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,cursor:"pointer"}}>
-            <div style={{width:20,textAlign:"center",fontSize:i<3?15:11,
-              color:i===0?T.ambar:T.t3,flexShrink:0}}>{medals[i]||i+1}</div>
+            <div style={{width:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,
+              color:medals[i]||T.t3,flexShrink:0,fontWeight:700}}>
+              {medals[i]?<Icon name="award" size={15} color={medals[i]}/>:i+1}</div>
             <Av n={e.nombre} color={s.c} size={28}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
@@ -941,8 +1011,8 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
   const vAct=parseFloat(velocidadActual(e));
   const vNec=parseFloat(ritmoNecesario(e)||0);
 
-  const TABS=[["avance","📊 Avance"],["historial","📈 Historial"],
-              ["contactos","📞 Contactos"],["estrategia","🎯 Estrategia"],["plan","📋 Plan"]];
+  const TABS=[["avance","barChart","Avance"],["historial","trendingUp","Historial"],
+              ["contactos","phone","Contactos"],["estrategia","target","Estrategia"],["plan","clipboard","Plan"]];
 
   const TA = ({c,children}) =>
     <textarea value={c.val} onChange={ev=>c.set(ev.target.value)} rows={c.rows||3}
@@ -951,11 +1021,11 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
         background:T.s3,color:T.t1,resize:"none",marginBottom:8}}>
       {children}</textarea>;
 
-  return <div style={{width:420,flexShrink:0,minWidth:0,background:T.s1,borderLeft:`1px solid ${T.bd}`,
+  return <div style={{width:420,flexShrink:0,minWidth:0,background:"var(--surface-gradient)",borderLeft:`1px solid ${T.bd}`,
     display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
 
     {/* Header */}
-    <div style={{background:T.s2,borderBottom:`1px solid ${T.bd}`,padding:"18px 18px 14px",flexShrink:0}}>
+    <div style={{background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,padding:"18px 18px 14px",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
         <div style={{display:"flex",gap:10,alignItems:"center",flex:1,minWidth:0}}>
           <Av n={e.nombre} color={s.c} size={40}/>
@@ -968,8 +1038,8 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
           </div>
         </div>
         <button onClick={onCerrar} style={{background:T.s4,border:"none",color:T.t2,width:26,
-          height:26,borderRadius:"50%",cursor:"pointer",fontSize:13,display:"flex",
-          alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
+          height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
+          alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="x" size={13}/></button>
       </div>
 
       {/* 5 KPIs en fila */}
@@ -980,12 +1050,12 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
           {l:"Comisión",v:fmt$(e.avance.comision),p:null,c:T.ambar},
           {l:"Quedan", v:dr!==null?(dr>0?`${dr}d`:"Vcdo"):"—",p:null,c:dr!==null&&dr<21?T.ambar:T.t2},
           {l:"Mails",  v:e.mails||0,p:null,c:T.azulL},
-        ].map(k=><div key={k.l} style={{background:T.s3,borderRadius:7,padding:"7px 4px",textAlign:"center"}}>
+        ].map(k=><Card key={k.l} style={{borderRadius:7,padding:"7px 4px",textAlign:"center"}}>
           <div style={{fontSize:12,fontWeight:900,color:k.c,letterSpacing:"-.3px"}}>{k.v}</div>
           {k.p!==null&&<div style={{margin:"2px 0 1px"}}><Barra val={k.p} tot={100} color={k.c} h={3}/></div>}
           <div style={{fontSize:8,color:T.t3,textTransform:"uppercase",letterSpacing:".05em",
             marginTop:k.p!==null?1:3}}>{k.l}</div>
-        </div>)}
+        </Card>)}
       </div>
 
       {/* Alertas inline */}
@@ -999,20 +1069,21 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
     </div>
 
     {/* Tabs */}
-    <div style={{display:"flex",background:T.s2,borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-      {TABS.map(([id,l])=><button key={id} onClick={()=>setT(id)} style={{
-        flex:1,padding:"9px 2px",border:"none",background:"transparent",
+    <div style={{display:"flex",background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+      {TABS.map(([id,ico,l])=><button key={id} onClick={()=>setT(id)} style={{
+        flex:1,padding:"9px 2px",border:"none",background:"transparent",display:"flex",
+        flexDirection:"column",alignItems:"center",gap:3,
         fontSize:10,fontWeight:tab===id?800:400,cursor:"pointer",fontFamily:"inherit",
         color:tab===id?T.azulL:T.t3,
         borderBottom:tab===id?`2px solid ${T.azulL}`:"2px solid transparent",whiteSpace:"nowrap"}}>
-        {l}</button>)}
+        <Icon name={ico} size={13}/>{l}</button>)}
     </div>
 
     {/* Acciones rápidas */}
-    <div style={{display:"flex",gap:6,padding:"8px 14px",background:T.s2,
+    <div style={{display:"flex",gap:6,padding:"8px 14px",background:"var(--surface-gradient)",
       borderBottom:`1px solid ${T.bd}`,flexShrink:0,flexWrap:"wrap"}}>
       <BtnP onClick={()=>setSC(!showC)} sm>＋ Contacto</BtnP>
-      <BtnP onClick={()=>setSM(!showMail)} color={T.azulL} sm>✉️ Mail</BtnP>
+      <BtnP onClick={()=>setSM(!showMail)} color={T.azulL} sm style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="mail" size={12}/> Mail</BtnP>
     </div>
 
     {/* Contenido */}
@@ -1020,15 +1091,15 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
 
       {/* ── AVANCE ── */}
       {tab==="avance"&&<div>
-        {showC&&<div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:13}}>
+        {showC&&<Card style={{padding:13,marginBottom:13}}>
           <Sec>Registrar contacto</Sec>
           <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
             {TIPOS.map(t=><button key={t.id} onClick={()=>setFC(f=>({...f,tipo:t.id}))}
-              style={{padding:"5px 10px",borderRadius:20,cursor:"pointer",fontFamily:"inherit",
+              style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:20,cursor:"pointer",fontFamily:"inherit",
                 border:`1.5px solid ${fC.tipo===t.id?T.azul:T.bd2}`,
                 background:fC.tipo===t.id?T.azulS:"transparent",
                 color:fC.tipo===t.id?T.azulL:T.t2,fontSize:11,fontWeight:700}}>
-              {t.e} {t.l}</button>)}
+              <Icon name={t.e} size={12}/> {t.l}</button>)}
           </div>
           <textarea value={fC.nota} onChange={ev=>setFC(f=>({...f,nota:ev.target.value}))} rows={3}
             placeholder="¿Qué hablaron? ¿Próximo paso?"
@@ -1037,11 +1108,11 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
               background:T.s3,color:T.t1,resize:"none",marginBottom:8}}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
             <BtnS onClick={()=>setSC(false)}>Cancelar</BtnS>
-            <BtnP onClick={guardC} color={T.verde}>✓ Guardar</BtnP>
+            <BtnP onClick={guardC} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
           </div>
-        </div>}
+        </Card>}
 
-        {showMail&&<div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:13}}>
+        {showMail&&<Card style={{padding:13,marginBottom:13}}>
           <Sec>Redactar mail</Sec>
           <div style={{fontSize:11,color:T.azulL,marginBottom:8}}>Para: {e.email}</div>
           <div style={{marginBottom:8}}><label style={{fontSize:10,color:T.t3,fontWeight:700,
@@ -1058,12 +1129,12 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
             <BtnS onClick={()=>setSM(false)}>Cancelar</BtnS>
-            <BtnP onClick={enviarMail} color={T.azulL}>✉️ Abrir en mail</BtnP>
+            <BtnP onClick={enviarMail} color={T.azulL} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="mail" size={13}/> Abrir en mail</BtnP>
           </div>
-        </div>}
+        </Card>}
 
         {/* Pólizas — métrica principal con gráfico */}
-        <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+        <Card style={{padding:13,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10}}>
             <div>
               <Sec>Pólizas vigentes</Sec>
@@ -1091,7 +1162,7 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
               <div style={{fontSize:14,fontWeight:700,color:s.c}}>{vAct}<span style={{fontSize:10,color:T.t3}}>/sem</span></div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Prima + Comisión */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -1099,23 +1170,24 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
             {l:"Prima mensual",v:fmt$(e.avance.prima),o:fmt$(e.plan.primaObj),p:ppr,c:T.verde},
             {l:"Comisión",v:fmt$(e.avance.comision),
               o:fmt$(Math.round(e.avance.prima*e.plan.comPct/100)),p:null,c:T.ambar},
-          ].map(k=><div key={k.l} style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:11}}>
+          ].map(k=><Card key={k.l} style={{padding:11}}>
             <Sec>{k.l}</Sec>
             <div style={{fontSize:18,fontWeight:900,color:k.c,marginBottom:k.p!==null?6:2}}>{k.v}</div>
             {k.p!==null&&<Barra val={k.p} tot={100} color={k.c} h={6}/>}
             <div style={{fontSize:10,color:T.t3,marginTop:4}}>
               {k.p!==null?`${k.p}% de ${k.o}`:`Devengada: ${k.o}`}
             </div>
-          </div>)}
+          </Card>)}
         </div>
 
         {/* Inconvenientes */}
-        <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13}}>
+        <Card style={{padding:13}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <Sec style={{marginBottom:0}}>Inconvenientes</Sec>
             <button onClick={()=>setSI(!showI)} style={{fontSize:11,color:T.azulL,background:"transparent",
-              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-              {showI?"Cancelar":"✏️ Editar"}</button>
+              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+              display:"inline-flex",alignItems:"center",gap:4}}>
+              {showI?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
           </div>
           {showI?<div>
             <textarea value={fI} onChange={ev=>setFI(ev.target.value)} rows={3}
@@ -1130,7 +1202,7 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
             ?<div style={{fontSize:13,color:T.t2,lineHeight:1.6,background:T.rojoS,borderRadius:7,
                 padding:"9px 11px",borderLeft:`2px solid ${T.rojo}`}}>{e.inconvenientes}</div>
             :<div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin inconvenientes registrados</div>)}
-        </div>
+        </Card>
 
         <div style={{textAlign:"right",fontSize:10,color:T.t3,marginTop:8}}>
           Última act: {fmtD(e.avance.ultimaAct)}
@@ -1138,7 +1210,7 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
       </div>}
 
       {/* ── HISTORIAL ── */}
-      {tab==="historial"&&<div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13}}>
+      {tab==="historial"&&<Card style={{padding:13}}>
         <Sec>Evolución semanal</Sec>
         {e.historialAvance.length===0
           ?<div style={{textAlign:"center",color:T.t3,padding:"20px 0",fontSize:12}}>Sin historial aún.</div>
@@ -1160,27 +1232,27 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
                   {l:"Pólizas",v:h.polizas,d:dP,c:T.azulL},
                   {l:"Prima",v:fmt$(h.prima),d:dPr,c:T.verde,fmt:true},
                   {l:"% obj.",v:`${pct(h.polizas,e.plan.polizasObj)}%`,d:null,c:T.ambar},
-                ].map(m=><div key={m.l} style={{background:T.s3,borderRadius:7,padding:8,textAlign:"center"}}>
+                ].map(m=><Card key={m.l} style={{borderRadius:7,padding:8,textAlign:"center"}}>
                   <div style={{fontSize:13,fontWeight:900,color:m.c}}>{m.v}</div>
                   {m.d!==null&&m.d!==0&&<div style={{fontSize:9,color:m.d>0?T.verde:T.rojo,fontWeight:700}}>
                     {m.d>0?"+":""}{m.fmt?fmt$(m.d):m.d}</div>}
                   <div style={{fontSize:8,color:T.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
-                </div>)}
+                </Card>)}
               </div>
             </div>;
           })}
-      </div>}
+      </Card>}
 
       {/* ── CONTACTOS ── */}
-      {tab==="contactos"&&<div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13}}>
+      {tab==="contactos"&&<Card style={{padding:13}}>
         <Sec>Historial de contactos ({e.contactos.length})</Sec>
         {e.contactos.length===0&&<div style={{textAlign:"center",color:T.t3,padding:"16px 0",fontSize:12}}>Sin contactos</div>}
         {e.contactos.map((c,i)=>{
           const t=TIPOS.find(x=>x.id===c.tipo);
           return <div key={i} style={{display:"flex",gap:10,padding:"10px 0",
             borderBottom:i<e.contactos.length-1?`1px solid ${T.bd}`:"none",alignItems:"flex-start"}}>
-            <div style={{width:32,height:32,borderRadius:7,background:T.s3,flexShrink:0,
-              display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>{t?.e||"📌"}</div>
+            <div style={{width:32,height:32,borderRadius:7,background:T.s3,flexShrink:0,color:T.azulL,
+              display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name={t?.e||"pin"} size={15}/></div>
             <div style={{flex:1}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,alignItems:"center"}}>
                 <span style={{fontSize:11,fontWeight:700,color:T.azulL}}>{t?.l||c.tipo}</span>
@@ -1190,16 +1262,17 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
             </div>
           </div>;
         })}
-      </div>}
+      </Card>}
 
       {/* ── ESTRATEGIA ── */}
       {tab==="estrategia"&&<div>
-        <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+        <Card style={{padding:13,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <Sec style={{marginBottom:0}}>Organización</Sec>
             <button onClick={()=>setSOrg(!showOrg)} style={{fontSize:11,color:T.azulL,background:"transparent",
-              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-              {showOrg?"Cancelar":"✏️ Editar"}</button>
+              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+              display:"inline-flex",alignItems:"center",gap:4}}>
+              {showOrg?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
           </div>
           {showOrg?<div>
             <select value={fOrgId} disabled={fExterno} onChange={ev=>setFOrgId(ev.target.value)}
@@ -1217,20 +1290,23 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
             {orgErr&&<div style={{fontSize:11,color:T.rojo,marginBottom:8}}>{orgErr}</div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
               <BtnS onClick={()=>{setSOrg(false);setFOrgId(e.organizador_id||"");setFExterno(e.es_externo||false);setOrgErr(null);}}>Cancelar</BtnS>
-              <BtnP onClick={guardOrg} color={T.verde}>✓ Guardar</BtnP>
+              <BtnP onClick={guardOrg} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
             </div>
           </div>:(e.es_externo
-            ?<div style={{fontSize:12,color:T.t2}}>🔹 Externo (sin organización)</div>
+            ?<div style={{fontSize:12,color:T.t2,display:"flex",alignItems:"center",gap:5}}>
+              <span style={{width:5,height:5,borderRadius:"50%",background:T.t2,display:"inline-block"}}/>
+              Externo (sin organización)</div>
             :<div style={{fontSize:12,color:T.t2}}>
               {organizadores.find(o=>o.id===e.organizador_id)?.razon_social || "Sin asignar"}
             </div>)}
-        </div>
-        <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+        </Card>
+        <Card style={{padding:13,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <Sec style={{marginBottom:0}}>Estrategia acordada</Sec>
             <button onClick={()=>setSE(!showE)} style={{fontSize:11,color:T.azulL,background:"transparent",
-              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-              {showE?"Cancelar":"✏️ Editar"}</button>
+              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+              display:"inline-flex",alignItems:"center",gap:4}}>
+              {showE?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
           </div>
           {showE?<div>
             <textarea value={fE} onChange={ev=>setFE(ev.target.value)} rows={5}
@@ -1245,26 +1321,27 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
           </div>:(e.estrategia
             ?<div style={{fontSize:13,color:T.t2,lineHeight:1.7}}>{e.estrategia}</div>
             :<div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin estrategia definida</div>)}
-        </div>
-        <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13}}>
+        </Card>
+        <Card style={{padding:13}}>
           <Sec>Datos de contacto</Sec>
-          {[["📞 Teléfono",e.tel],["✉️ Email",e.email]].map(([l,v])=>
+          {[["phone","Teléfono",e.tel],["mail","Email",e.email]].map(([ico,l,v])=>
             <div key={l} style={{display:"flex",justifyContent:"space-between",
               padding:"7px 0",borderBottom:`1px solid ${T.bd}`}}>
-              <span style={{fontSize:11,color:T.t3}}>{l}</span>
+              <span style={{fontSize:11,color:T.t3,display:"flex",alignItems:"center",gap:5}}><Icon name={ico} size={11}/>{l}</span>
               <span style={{fontSize:12,fontWeight:600,color:T.t1}}>{v||"—"}</span>
             </div>)}
           {e.notas&&<div style={{fontSize:12,color:T.t2,lineHeight:1.6,marginTop:10}}>{e.notas}</div>}
-        </div>
+        </Card>
       </div>}
 
       {/* ── PLAN ── */}
-      {tab==="plan"&&<div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13}}>
+      {tab==="plan"&&<Card style={{padding:13}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <Sec style={{marginBottom:0}}>Plan comercial</Sec>
           <button onClick={()=>setEP(!editPlan)} style={{fontSize:11,color:T.azulL,background:"transparent",
-            border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-            {editPlan?"Cancelar":"✏️ Editar"}</button>
+            border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+            display:"inline-flex",alignItems:"center",gap:4}}>
+            {editPlan?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
         </div>
         {editPlan?<div>
           <div style={{marginBottom:8}}><label style={{fontSize:10,color:T.t3,fontWeight:700,textTransform:"uppercase",
@@ -1284,7 +1361,7 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
             <BtnS onClick={()=>setEP(false)}>Cancelar</BtnS>
-            <BtnP onClick={guardP} color={T.verde}>✓ Guardar</BtnP>
+            <BtnP onClick={guardP} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
           </div>
         </div>:<div>
           <div style={{background:T.azulS,borderRadius:8,padding:"9px 11px",marginBottom:12,
@@ -1292,31 +1369,32 @@ function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
             <div style={{fontSize:12,fontWeight:700,color:T.azulL}}>{e.plan.desc||"Sin descripción"}</div>
           </div>
           {[
-            ["📅 Inicio",fmtD(e.plan.fechaInicio)],
-            ["🏁 Vencimiento",fmtD(e.plan.fechaFin)],
-            ["📄 Objetivo",`${e.plan.polizasObj} pólizas`],
-            ["💰 Prima obj.",fmt$(e.plan.primaObj)],
-            ["💵 Comisión",`${e.plan.comPct}%`],
-            ["⏱ Días restantes",dr!==null?(dr>0?`${dr} días`:"Vencido"):"—"],
-          ].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",
+            ["calendar","Inicio",fmtD(e.plan.fechaInicio)],
+            ["flag","Vencimiento",fmtD(e.plan.fechaFin)],
+            ["fileText","Objetivo",`${e.plan.polizasObj} pólizas`],
+            ["dollarSign","Prima obj.",fmt$(e.plan.primaObj)],
+            ["dollarSign","Comisión",`${e.plan.comPct}%`],
+            ["clock","Días restantes",dr!==null?(dr>0?`${dr} días`:"Vencido"):"—"],
+          ].map(([ico,l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",
             padding:"7px 0",borderBottom:`1px solid ${T.bd}`}}>
-            <span style={{fontSize:11,color:T.t3}}>{l}</span>
-            <span style={{fontSize:12,fontWeight:700,color:T.t1}}>{v}</span>
+            <span style={{fontSize:11,color:T.t3,display:"flex",alignItems:"center",gap:5}}><Icon name={ico} size={11}/>{l}</span>
+            <Num style={{fontSize:12,fontWeight:700,color:T.t1}}>{v}</Num>
           </div>)}
-          <div style={{background:T.s3,borderRadius:8,padding:12,marginTop:12,textAlign:"center"}}>
+          <Card style={{padding:12,marginTop:12,textAlign:"center"}}>
             <div style={{fontSize:9,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:4}}>
               Proyección al ritmo actual
             </div>
             <div style={{fontSize:24,fontWeight:900,color:proy>=e.plan.polizasObj?T.verde:T.ambar}}>
               ~{proy} pólizas
             </div>
-            <div style={{fontSize:11,color:T.t3,marginTop:4}}>
-              {proy>=e.plan.polizasObj?"✅ Va a llegar al objetivo"
-                :`⚠️ Falta acelerar — ${e.plan.polizasObj-proy} diferencia`}
+            <div style={{fontSize:11,color:T.t3,marginTop:4,display:"flex",alignItems:"center",
+              justifyContent:"center",gap:5}}>
+              {proy>=e.plan.polizasObj?<><Icon name="check" size={11} color={T.verde}/> Va a llegar al objetivo</>
+                :<><Icon name="alertTriangle" size={11} color={T.ambar}/> {`Falta acelerar — ${e.plan.polizasObj-proy} diferencia`}</>}
             </div>
-          </div>
+          </Card>
         </div>}
-      </div>}
+      </Card>}
     </div>
   </div>;
 }
@@ -1333,13 +1411,14 @@ function ModalNuevo({onGuardar,onCerrar,organizadores}) {
     textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>{t}</label>;
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",display:"flex",
     alignItems:"center",justifyContent:"center",zIndex:300,backdropFilter:"blur(4px)"}}>
-    <div style={{background:T.s1,borderRadius:13,padding:26,width:540,maxHeight:"88vh",
+    <Card style={{borderRadius:13,padding:26,width:540,maxHeight:"88vh",
       overflow:"hidden",display:"flex",flexDirection:"column",
-      border:`1px solid ${T.bd}`,boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
+      boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div style={{fontSize:17,fontWeight:900,color:T.t1}}>Nuevo especialista</div>
         <button onClick={onCerrar} style={{background:T.s3,border:"none",color:T.t2,
-          width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:13}}>✕</button>
+          width:26,height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
+          alignItems:"center",justifyContent:"center"}}><Icon name="x" size={13}/></button>
       </div>
       <div style={{overflowY:"auto",flex:1,paddingRight:4}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1404,7 +1483,7 @@ function ModalNuevo({onGuardar,onCerrar,organizadores}) {
             primaObj:Number(f.plan.primaObj)||0,comPct:Number(f.plan.comPct)||0}});}}>
           Crear especialista</BtnP>
       </div>
-    </div>
+    </Card>
   </div>;
 }
 
@@ -1563,7 +1642,7 @@ export default function App() {
     }
 
     setShowN(false);
-    showToast("✅",`${datosNuevoEspecialista.nombre} agregado`);
+    showToast("check",`${datosNuevoEspecialista.nombre} agregado`);
     refetch();
   }
 
@@ -1577,7 +1656,7 @@ export default function App() {
     }
 
     setShowOrgN(false);
-    showToast("✅",`${datosNuevaOrg.razon_social} agregada`);
+    showToast("check",`${datosNuevaOrg.razon_social} agregada`);
   }
 
   async function crearObjetivoUdn(datos) {
@@ -1587,7 +1666,7 @@ export default function App() {
       alert('No se pudo guardar: ' + error.message);
       return;
     }
-    showToast("✅", `Objetivo ${datos.anio} de ${datos.nombre_udn} guardado`);
+    showToast("check", `Objetivo ${datos.anio} de ${datos.nombre_udn} guardado`);
   }
 
   async function editarObjetivoUdn(id, datos) {
@@ -1597,7 +1676,7 @@ export default function App() {
       alert('No se pudo guardar: ' + error.message);
       return;
     }
-    showToast("✅", `Objetivo ${datos.anio} actualizado`);
+    showToast("check", `Objetivo ${datos.anio} actualizado`);
   }
 
   async function guardarAvanceUdn(udnObjetivoId, periodo, datos) {
@@ -1607,7 +1686,7 @@ export default function App() {
       alert('No se pudo guardar: ' + error.message);
       return;
     }
-    showToast("✅", `Avance de ${periodo.slice(0,7)} guardado`);
+    showToast("check", `Avance de ${periodo.slice(0,7)} guardado`);
   }
 
   async function manejarArchivoPolizas(ev) {
@@ -1625,7 +1704,7 @@ export default function App() {
       const orgMsg = resumen.organizadoresCreados.length
         ? ` · ${resumen.organizadoresCreados.length} organización(es) nueva(s): ${resumen.organizadoresCreados.map(o=>o.razonSocial).join(", ")}`
         : "";
-      showToast("✅", `${resumen.insertadas} de ${resumen.total} pólizas importadas${orgMsg}`);
+      showToast("check", `${resumen.insertadas} de ${resumen.total} pólizas importadas${orgMsg}`);
       if (resumen.organizadoresCreados.length) refetchOrganizadores();
     } catch (err) {
       console.error('Error al importar pólizas:', err);
@@ -1651,7 +1730,7 @@ export default function App() {
         ? ` · ${resumen.organizadoresCreados.length} organización(es) nueva(s): ${resumen.organizadoresCreados.map(o=>o.razonSocial).join(", ")}`
         : "";
       const erroresMsg = resumen.erroresParseo.length ? ` · ${resumen.erroresParseo.length} PDF no se pudo leer` : "";
-      showToast("✅", `${resumen.kpisImportados} KPI(s) importados de ${resumen.totalPdfs} PDF(s)${orgMsg}${erroresMsg}`);
+      showToast("check", `${resumen.kpisImportados} KPI(s) importados de ${resumen.totalPdfs} PDF(s)${orgMsg}${erroresMsg}`);
       if (resumen.erroresParseo.length) console.warn("PDFs no parseados:", resumen.erroresParseo);
       if (resumen.avisos.length) console.warn("Avisos del importador Signos:", resumen.avisos);
       refetchOrganizadorKpis();
@@ -1670,7 +1749,7 @@ export default function App() {
 
   if (authLoading) {
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",
-      justifyContent:"center",background:T.bg,color:T.t2,fontFamily:"'Inter',sans-serif"}}>
+      justifyContent:"center",background:"var(--bg-gradient)",color:T.t2,fontFamily:"'Inter',sans-serif"}}>
       Cargando...
     </div>;
   }
@@ -1688,7 +1767,7 @@ export default function App() {
 
   return <div style={{display:"flex",height:"100vh",
     fontFamily:"'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif",
-    background:T.bg,color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
+    background:"var(--bg-gradient)",color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
     <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
       <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vista}</div>
@@ -1703,11 +1782,10 @@ export default function App() {
     {showOrgN&&<ModalNuevaOrganizacion onGuardar={crearOrganizacion} onCerrar={()=>setShowOrgN(false)}/>}
     <input ref={fileImportRef} type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={manejarArchivoPolizas}/>
     <input ref={fileSignosRef} type="file" accept=".zip,.pdf" multiple style={{display:"none"}} onChange={manejarArchivoSignos}/>
-    {toast&&<div style={{position:"fixed",bottom:22,right:22,background:T.s2,
-      border:`1px solid ${T.bd}`,borderRadius:9,padding:"11px 16px",display:"flex",
+    {toast&&<Card style={{position:"fixed",bottom:22,right:22,borderRadius:9,padding:"11px 16px",display:"flex",
       alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.45)",
       zIndex:500,fontSize:13,color:T.t1,fontWeight:600}}>
-      <span style={{fontSize:17}}>{toast.ico}</span>{toast.msg}
-    </div>}
+      <Icon name={toast.ico} size={18} color={T.verde}/>{toast.msg}
+    </Card>}
   </div>;
 }

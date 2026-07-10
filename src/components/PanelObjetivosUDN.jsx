@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { T, fmt$, fmtN, Card, Inp, BtnP, BtnS } from "../lib/ui.jsx";
+import { T, fmt$, fmtN, Card, Inp, BtnP, BtnS, Icon, Num } from "../lib/ui.jsx";
 import { clasificarCrecimiento, clasificarPremio, clasificarRescate, mesDePeriodo } from "../lib/udnObjetivos";
 
 const NIVEL_LABEL = { verde: "En ritmo", ambar: "Atención", rojo: "Atrasado", sin_datos: "Sin datos" };
@@ -168,12 +168,13 @@ function FormAvanceMensual({ periodoSugerido, avanceExistente, onGuardar, onCanc
 
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",display:"flex",
     alignItems:"center",justifyContent:"center",zIndex:300,backdropFilter:"blur(4px)"}}>
-    <div style={{background:T.s1,borderRadius:13,padding:26,width:460,maxHeight:"90vh",overflowY:"auto",
-      border:`1px solid ${T.bd}`,boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
+    <Card style={{borderRadius:13,padding:26,width:460,maxHeight:"90vh",overflowY:"auto",
+      boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
         <div style={{fontSize:17,fontWeight:900,color:T.t1}}>Cargar avance — {f.periodo.slice(0,7)}</div>
         <button onClick={onCancelar} style={{background:T.s3,border:"none",color:T.t2,
-          width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:13}}>✕</button>
+          width:26,height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
+          alignItems:"center",justifyContent:"center"}}><Icon name="x" size={13}/></button>
       </div>
       <div style={{fontSize:11,color:T.t3,marginBottom:16}}>Cargá los números tal cual figuran en el reporte de OBI.</div>
 
@@ -214,7 +215,7 @@ function FormAvanceMensual({ periodoSugerido, avanceExistente, onGuardar, onCanc
           notas: f.notas || null,
         })}>Guardar</BtnP>
       </div>
-    </div>
+    </Card>
   </div>;
 }
 
@@ -237,7 +238,7 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
 
   if (!objetivo) {
     return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
-      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",marginBottom:18}}>Mis Objetivos</div>
+      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)",marginBottom:18}}>Mis Objetivos</div>
       <FormObjetivoAnual anioSugerido={anioActual} onGuardar={onCrearObjetivo}/>
     </div>;
   }
@@ -256,13 +257,13 @@ export default function PanelObjetivosUDN({ objetivos, avanceMensual, loading, e
 
   return <div style={{flex:1,overflowY:"auto",padding:"26px 28px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px"}}>
+      <div style={{fontSize:20,fontWeight:900,color:T.t1,letterSpacing:"-.5px",fontFamily:"var(--font-display)"}}>
         Mis Objetivos <span style={{fontSize:14,fontWeight:400,color:T.t3}}>· {objetivo.nombre_udn} {objetivo.anio}</span>
       </div>
       <div style={{display:"flex",gap:8}}>
-        <BtnS onClick={()=>setMostrarEdicion(true)}>✏️ Editar objetivo</BtnS>
-        <BtnP onClick={()=>setMostrarForm(true)}>
-          {avanceDeEsteMes ? "✏️ Editar avance del mes" : "＋ Cargar avance del mes"}
+        <BtnS onClick={()=>setMostrarEdicion(true)} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="edit" size={12}/> Editar objetivo</BtnS>
+        <BtnP onClick={()=>setMostrarForm(true)} style={{display:"inline-flex",alignItems:"center",gap:5}}>
+          {avanceDeEsteMes ? <><Icon name="edit" size={12}/> Editar avance del mes</> : "＋ Cargar avance del mes"}
         </BtnP>
       </div>
     </div>

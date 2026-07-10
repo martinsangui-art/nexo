@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { T, fmt$, fmtN, Card, Sec, BtnS } from "../lib/ui.jsx";
+import { T, fmt$, fmtN, Card, Sec, BtnS, Icon, Num } from "../lib/ui.jsx";
 import { calcularIndicePenetracion, calcularOportunidad, clasificarIndice } from "../lib/fuerzaComercial";
 
 const BADGE_LABEL = { rojo: "Cartera fuerte, retiro casi nulo", ambar: "Por debajo del benchmark", verde: "Convertido", sin_datos: "Sin datos suficientes" };
@@ -26,8 +26,7 @@ function InfoIndice({ indiceBenchmark }) {
       textUnderlineOffset:2}}>
       {abierto ? "ocultar" : "ⓘ ¿qué es el índice?"}
     </button>
-    {abierto && <div style={{marginTop:6,fontSize:11,color:T.t2,lineHeight:1.6,background:T.s3,
-      borderRadius:7,padding:10,border:`1px solid ${T.bd}`}}>
+    {abierto && <Card style={{marginTop:6,fontSize:11,color:T.t2,lineHeight:1.6,borderRadius:7,padding:10}}>
       No es un dato de Federación Patronal — lo calcula NEXO: <b style={{color:T.t1}}>(prima de tus pólizas
       de retiro con este organizador ÷ prima de su cartera Seguros Generales+ART en Signos) × 10.000</b>.
       Mide cuánto convertís esa cartera en venta de retiro. Se compara contra el organizador con mejor
@@ -37,7 +36,7 @@ function InfoIndice({ indiceBenchmark }) {
         <div><span style={{color:T.ambar,fontWeight:800}}>● Por debajo</span> — entre 5% y 90%.</div>
         <div><span style={{color:T.rojo,fontWeight:800}}>● Cartera fuerte, retiro casi nulo</span> — menos del 5%, la mejor oportunidad.</div>
       </div>
-    </div>}
+    </Card>}
   </div>;
 }
 
@@ -76,9 +75,9 @@ export default function FichaOrganizador({ organizador, codigos, kpisOrg, poliza
     </div>
   );
 
-  return <div style={{width:420,flexShrink:0,minWidth:0,background:T.s1,borderLeft:`1px solid ${T.bd}`,
+  return <div style={{width:420,flexShrink:0,minWidth:0,background:"var(--surface-gradient)",borderLeft:`1px solid ${T.bd}`,
     display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
-    <div style={{background:T.s2,borderBottom:`1px solid ${T.bd}`,padding:"18px 18px 14px",flexShrink:0}}>
+    <div style={{background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,padding:"18px 18px 14px",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
         <div style={{minWidth:0}}>
           <div style={{fontWeight:900,fontSize:15,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
@@ -87,33 +86,35 @@ export default function FichaOrganizador({ organizador, codigos, kpisOrg, poliza
           <div style={{fontSize:10,color:T.t3,marginTop:2}}>{organizador.zona || "Sin zona"}</div>
         </div>
         <button onClick={onCerrar} style={{background:T.s4,border:"none",color:T.t2,width:26,
-          height:26,borderRadius:"50%",cursor:"pointer",fontSize:13,flexShrink:0}}>✕</button>
+          height:26,borderRadius:"50%",cursor:"pointer",flexShrink:0,display:"flex",
+          alignItems:"center",justifyContent:"center"}}><Icon name="x" size={13}/></button>
       </div>
       <BadgeIndice indice={indice} indiceBenchmark={indiceBenchmark} />
       <InfoIndice indiceBenchmark={indiceBenchmark} />
       {enFaltantes && <div style={{marginTop:8,fontSize:11,fontWeight:700,color:T.ambar,background:T.ambarS,
-        borderRadius:6,padding:"6px 10px",border:`1px solid ${T.ambar}33`}}>
-        ⚠️ Sin reporte Signos este período — datos de fuerza comercial desactualizados
+        borderRadius:6,padding:"6px 10px",border:`1px solid ${T.ambar}33`,display:"flex",alignItems:"center",gap:6}}>
+        <Icon name="alertTriangle" size={13}/> Sin reporte Signos este período — datos de fuerza comercial desactualizados
       </div>}
     </div>
 
     <div style={{flex:1,overflowY:"auto",padding:14}}>
-      <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+      <Card style={{padding:13,marginBottom:10}}>
         <Sec>Código(s) de sistema</Sec>
         {codigos.length === 0
           ? <div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin código Signos vinculado</div>
           : <div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:codigos.length>1?8:0}}>
               {codigos.map((c) => <span key={c.id} style={{fontSize:12,fontWeight:800,color:T.azulL,
-                background:T.azulS,borderRadius:6,padding:"3px 9px"}}>{c.codigo_signos}{c.es_principal?" ★":""}</span>)}
+                background:T.azulS,borderRadius:6,padding:"3px 9px",display:"inline-flex",alignItems:"center",gap:4}}>
+                <Num>{c.codigo_signos}</Num>{c.es_principal && <Icon name="star" size={10} color={T.azulL}/>}</span>)}
             </div>
             {codigos.length > 1 && <div style={{fontSize:11,color:T.t2,lineHeight:1.5}}>
               Unificado — este organizador opera bajo los códigos {codigos.map((c) => c.codigo_signos).join(" y ")}.
             </div>}
           </div>}
-      </div>
+      </Card>
 
-      <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+      <Card style={{padding:13,marginBottom:10}}>
         <Sec>Cartera SG+ART {periodoActual ? `· ${periodoActual.slice(0,7)}` : ""}</Sec>
         {!kpiActual
           ? <div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin datos de Signos importados</div>
@@ -125,23 +126,23 @@ export default function FichaOrganizador({ organizador, codigos, kpisOrg, poliza
             <Fila l="Productores en su red" v={fmtN(kpiActual.productores)} />
             <Fila l="Siniestralidad" v={kpiActual.siniestralidad != null ? `${kpiActual.siniestralidad}%` : "—"} />
           </div>}
-      </div>
+      </Card>
 
-      <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13,marginBottom:10}}>
+      <Card style={{padding:13,marginBottom:10}}>
         <Sec>Producción de retiro</Sec>
         <Fila l="Pólizas vigentes" v={fmtN(polizasOrg.length)} />
         <Fila l="Prima anualizada" v={fmt$(primaRetiro)} />
         <Fila l="Directa (vendida por el organizador)" v={fmt$(primaDirecta)} />
         <Fila l="Red (vendida por un PAS)" v={fmt$(primaRed)} />
-      </div>
+      </Card>
 
-      {oportunidad > 0 && <div style={{background:T.s2,borderRadius:9,border:`1px solid ${T.bd}`,padding:13}}>
+      {oportunidad > 0 && <Card style={{padding:13}}>
         <Sec color={T.verde}>Oportunidad estimada</Sec>
         <div style={{fontSize:22,fontWeight:900,color:T.verde}}>{fmt$(oportunidad)}</div>
         <div style={{fontSize:11,color:T.t3,marginTop:4}}>
           Prima de retiro adicional si convirtiera su cartera SG+ART al ritmo del mejor organizador del período.
         </div>
-      </div>}
+      </Card>}
     </div>
   </div>;
 }

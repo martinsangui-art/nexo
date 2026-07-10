@@ -1,111 +1,80 @@
+/* ═══════════════════════════════════════════════════════════════════
+   NEXO — tokens del sistema visual compartido (shell: fondo, panels,
+   botón primario, sidebar). El resto de la UI usa estilos inline con
+   el objeto T de ./lib/ui.jsx — estos vars cubren específicamente lo
+   que pidió la spec de "sistema visual" (gradientes, oro, tipografía).
+═══════════════════════════════════════════════════════════════════ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --bg-gradient:
+    radial-gradient(circle at 90% 0%, rgba(201,161,94,0.26), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(38,99,235,0.48), transparent 60%),
+    linear-gradient(145deg, #16233F 0%, #131320 75%);
+  --surface-gradient: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015) 60%);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --text-primary: #EEF2FF;
+  --text-tertiary: #5E657C;
+  --text-secondary: #6B82A8;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --gold: #C9A15E;
+  --gold-bright: #E9C989;
+  --gold-dim: rgba(201, 161, 94, 0.14);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --font-display: 'Bodoni Moda', Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html, body, #root {
+  height: 100%;
 }
 
 body {
   margin: 0;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+/* ─── Sidebar nav icons ──────────────────────────────────────────── */
+.nav-item .stroke-part { stroke: var(--text-secondary); transition: stroke .15s; }
+.nav-item.active .stroke-part { stroke: var(--gold-bright); }
+.nav-item .fill-part { fill: var(--gold); opacity: 0.7; transition: fill .15s, opacity .15s; }
+.nav-item.active .fill-part { fill: var(--gold-bright); opacity: 1; }
 
-h1,
-h2 {
-  font-family: var(--heading);
+.nav-item-wrap { position: relative; }
+.nav-tooltip {
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--text-primary);
+  box-shadow: 0 12px 28px -8px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.05) inset;
+  white-space: nowrap;
+  position: absolute;
+  left: 56px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 50;
 }
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.nav-item-wrap:hover .nav-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.nav-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border-left: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
 }

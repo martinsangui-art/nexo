@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { T } from '../lib/ui.jsx'
 
 export default function Login() {
   const { signIn, signUp } = useAuth()
@@ -34,11 +35,13 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#0A0F1E'
+      background: 'var(--bg-gradient)',
+      backgroundAttachment: 'fixed'
     }}>
       <form onSubmit={handleSubmit} style={{
-        background: '#0F1628',
-        border: '1px solid #202840',
+        background: 'var(--surface-gradient)',
+        border: '1px solid var(--hairline)',
+        boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 24px 48px -24px rgba(0,0,0,0.6)',
         borderRadius: 16,
         padding: 40,
         width: 360,
@@ -46,8 +49,8 @@ export default function Login() {
         flexDirection: 'column',
         gap: 16
       }}>
-        <h1 style={{ color: '#F0F4FF', fontSize: 28, margin: 0 }}>NEXO</h1>
-        <p style={{ color: '#6B7FA8', margin: 0, fontSize: 14 }}>
+        <h1 style={{ color: T.t1, fontSize: 28, margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700 }}>NEXO</h1>
+        <p style={{ color: T.t2, margin: 0, fontSize: 14 }}>
           {modoRegistro ? 'Crear cuenta' : 'Iniciar sesión'}
         </p>
 
@@ -60,9 +63,9 @@ export default function Login() {
           style={{
             padding: 12,
             borderRadius: 8,
-            border: '1px solid #202840',
-            background: '#162035',
-            color: '#F0F4FF'
+            border: `1px solid ${T.bd2}`,
+            background: T.s3,
+            color: T.t1
           }}
         />
         <input
@@ -75,18 +78,18 @@ export default function Login() {
           style={{
             padding: 12,
             borderRadius: 8,
-            border: '1px solid #202840',
-            background: '#162035',
-            color: '#F0F4FF'
+            border: `1px solid ${T.bd2}`,
+            background: T.s3,
+            color: T.t1
           }}
         />
 
         {error && (
-          <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{error}</p>
+          <p style={{ color: T.rojo, fontSize: 13, margin: 0 }}>{error}</p>
         )}
 
         {mensajeExito && (
-          <p style={{ color: '#22C55E', fontSize: 13, margin: 0, lineHeight: 1.4 }}>
+          <p style={{ color: T.verde, fontSize: 13, margin: 0, lineHeight: 1.4 }}>
             {mensajeExito}
           </p>
         )}
@@ -95,9 +98,10 @@ export default function Login() {
           padding: 12,
           borderRadius: 8,
           border: 'none',
-          background: '#0055B8',
-          color: '#fff',
-          fontWeight: 600,
+          background: 'linear-gradient(180deg, var(--gold-bright), var(--gold))',
+          boxShadow: '0 1px 0 rgba(255,255,255,0.3) inset, 0 4px 20px rgba(201,161,94,0.25)',
+          color: '#241A0A',
+          fontWeight: 700,
           cursor: 'pointer'
         }}>
           {loading ? 'Cargando...' : modoRegistro ? 'Registrarme' : 'Entrar'}
@@ -113,7 +117,7 @@ export default function Login() {
           style={{
             background: 'none',
             border: 'none',
-            color: '#6B7FA8',
+            color: T.t2,
             fontSize: 13,
             cursor: 'pointer'
           }}
