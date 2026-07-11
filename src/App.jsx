@@ -14,7 +14,7 @@ import { calcularIndicePenetracion, calcularOportunidad, calcularFaltantes, ulti
 import Login from "./components/Login";
 import FichaOrganizador from "./components/FichaOrganizador";
 import PanelObjetivosUDN from "./components/PanelObjetivosUDN";
-import { T, fmt$, fmtN, fmtD, fmtDc, pct, inic, Barra, Av, Card, Sec, Inp, BtnP, BtnS, Icon, Num } from "./lib/ui.jsx";
+import { T, fmt$, fmtD, fmtDc, pct, Barra, Av, Card, Sec, Inp, BtnP, BtnS, Icon, Num } from "./lib/ui.jsx";
 
 /* ═══════════════════════════════════════════════════════════════════
    NEXO v4.1 — Seguimiento Comercial · Federación Patronal Retiro
@@ -128,102 +128,6 @@ const normalizarEspecialista = e => ({
   estrategia: e.estrategia ?? "",
   mails: e.mails ?? 0,
 });
-
-// DEMO: datos mock originales, comentados — reemplazados por useEspecialistas().
-// Se dejan acá por si hace falta volver atrás rápido para revisar diseño visual.
-/*
-const DEMO = [
-  {
-    id:1, nombre:"Laura Gómez", org:"ORGANIZACION BIGATTON S.A.",
-    tel:"11-2345-6789", email:"lgomez@bigatton.com",
-    notas:"Primera experiencia. Muy proactiva, buena llegada con los PAS.",
-    plan:{desc:"Plan BBca · Jun-Sep 2026",fechaInicio:ds(-45),fechaFin:ds(45),polizasObj:20,primaObj:2000000,comPct:8},
-    avance:{polizas:11,prima:1050000,comision:84000,rescates:0,ultimaAct:ds(-3)},
-    historialAvance:[
-      {fecha:ds(-42),polizas:2,prima:190000},{fecha:ds(-35),polizas:4,prima:380000},
-      {fecha:ds(-28),polizas:6,prima:570000},{fecha:ds(-21),polizas:8,prima:760000},
-      {fecha:ds(-14),polizas:9,prima:855000},{fecha:ds(-7),polizas:11,prima:1050000},
-    ],
-    contactos:[
-      {fecha:ds(-3),tipo:"whatsapp",nota:"Confirma 2 pólizas en proceso. Reunión el viernes con MIUNA."},
-      {fecha:ds(-11),tipo:"llamada",nota:"Consulta Art. 81. Mandé material."},
-      {fecha:ds(-18),tipo:"reunion",nota:"Revisión de estrategia. Foco en PAS con cartera > 5 vigentes."},
-    ],
-    inconvenientes:"Dificultad para explicar beneficio impositivo del Art. 81 a PAS mayores.",
-    estrategia:"Foco en PAS con cartera vigente > 5 pólizas. Presentación institucional en agosto.",
-    mails:3,
-  },
-  {
-    id:2, nombre:"Marcos Villalba", org:"FRANZINO WALTER ENRIQUE OMAR",
-    tel:"11-5678-9012", email:"mvillalba@franzino.com",
-    notas:"Red amplia. Experiencia en vida colectivo.",
-    plan:{desc:"Plan GBA Sur · May-Ago 2026",fechaInicio:ds(-60),fechaFin:ds(30),polizasObj:30,primaObj:3600000,comPct:9},
-    avance:{polizas:8,prima:640000,comision:57600,rescates:2,ultimaAct:ds(-7)},
-    historialAvance:[
-      {fecha:ds(-56),polizas:1,prima:80000},{fecha:ds(-49),polizas:3,prima:240000},
-      {fecha:ds(-42),polizas:4,prima:320000},{fecha:ds(-35),polizas:5,prima:400000},
-      {fecha:ds(-28),polizas:6,prima:480000},{fecha:ds(-21),polizas:7,prima:560000},
-      {fecha:ds(-14),polizas:8,prima:640000},{fecha:ds(-7),polizas:8,prima:640000},
-    ],
-    contactos:[
-      {fecha:ds(-8),tipo:"email",nota:"2 rescates. PAS con problemas de cobranza. Necesita seguimiento."},
-      {fecha:ds(-15),tipo:"llamada",nota:"Resistencia en productores mayores. Acordamos capacitación."},
-      {fecha:ds(-22),tipo:"reunion",nota:"Revisión mensual. Ritmo bajo. Se compromete a 4 pólizas antes del 15."},
-    ],
-    inconvenientes:"2 rescates. Productores con resistencia. Problemas de cobranza reportados.",
-    estrategia:"Capacitación semana próxima. Foco en PAS jóvenes 40-50 años.",
-    mails:5,
-  },
-  {
-    id:3, nombre:"Sofía Reyes", org:"SALTA S.A.",
-    tel:"11-8901-2345", email:"sreyes@salta.com",
-    notas:"Especialista senior. Top performer histórica.",
-    plan:{desc:"Plan Salta · Jun-Sep 2026",fechaInicio:ds(-30),fechaFin:ds(60),polizasObj:25,primaObj:2500000,comPct:8.5},
-    avance:{polizas:10,prima:980000,comision:83300,rescates:0,ultimaAct:ds(-2)},
-    historialAvance:[
-      {fecha:ds(-28),polizas:2,prima:196000},{fecha:ds(-21),polizas:5,prima:490000},
-      {fecha:ds(-14),polizas:7,prima:686000},{fecha:ds(-7),polizas:9,prima:882000},
-      {fecha:ds(-2),polizas:10,prima:980000},
-    ],
-    contactos:[
-      {fecha:ds(-3),tipo:"whatsapp",nota:"Cerró 2 pólizas. Pipeline de 6 prospectos calificados."},
-      {fecha:ds(-10),tipo:"llamada",nota:"Pidió material PGU vs Renta Vitalicia."},
-    ],
-    inconvenientes:"",
-    estrategia:"En ritmo. Potenciar referidos. Evaluar empresa mediana de la zona.",
-    mails:2,
-  },
-  {
-    id:4, nombre:"Diego Palermo", org:"RECAITE ANGEL ARTURO",
-    tel:"11-3456-7890", email:"dpalermo@recaite.com",
-    notas:"Nueva incorporación. Motivado pero necesita acompañamiento.",
-    plan:{desc:"Plan GBA Norte · Jun-Sep 2026",fechaInicio:ds(-20),fechaFin:ds(70),polizasObj:15,primaObj:1500000,comPct:7},
-    avance:{polizas:1,prima:95000,comision:6650,rescates:0,ultimaAct:ds(-5)},
-    historialAvance:[
-      {fecha:ds(-14),polizas:0,prima:0},{fecha:ds(-7),polizas:1,prima:95000},
-    ],
-    contactos:[
-      {fecha:ds(-6),tipo:"llamada",nota:"1 póliza en 3 semanas. Org no lo acompaña. Prioriza otros productos."},
-      {fecha:ds(-13),tipo:"whatsapp",nota:"Pide material. Se lo envié."},
-    ],
-    inconvenientes:"El organizador no lo acompaña. Situación crítica para el plan.",
-    estrategia:"Contactar directamente al organizador. Evaluar continuidad.",
-    mails:4,
-  },
-  {
-    id:5, nombre:"Ana Castillo", org:"MORETTI NILO ANGEL",
-    tel:"11-6789-0123", email:"acastillo@moretti.com",
-    notas:"Plan anterior cumplido. Renovando con nuevo esquema.",
-    plan:{desc:"Plan Renovación · Jul-Oct 2026",fechaInicio:ds(-5),fechaFin:ds(85),polizasObj:22,primaObj:2200000,comPct:8},
-    avance:{polizas:2,prima:195000,comision:15600,rescates:0,ultimaAct:ds(-1)},
-    historialAvance:[{fecha:ds(-1),polizas:2,prima:195000}],
-    contactos:[{fecha:ds(-2),tipo:"llamada",nota:"Arranque sólido. 5 reuniones agendadas."}],
-    inconvenientes:"",
-    estrategia:"Presentación grupal a PAS el próximo martes. Aprovechar cartera existente.",
-    mails:1,
-  },
-];
-*/
 
 // Los "id" son los valores válidos que acepta el check constraint
 // contactos_canal_check en Supabase — deben ir en minúscula sin tilde.
