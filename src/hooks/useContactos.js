@@ -1,28 +1,8 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useSupabaseTable } from './useSupabaseTable'
 
 export function useContactos() {
-  const [contactos, setContactos] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    fetchContactos()
-  }, [])
-
-  async function fetchContactos() {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('contactos')
-      .select('*')
-      .order('fecha', { ascending: false })
-
-    if (error) setError(error)
-    else setContactos(data)
-    setLoading(false)
-  }
-
-  return { contactos, loading, error, refetch: fetchContactos }
+  const { data: contactos, loading, error, refetch } = useSupabaseTable('contactos', '-fecha')
+  return { contactos, loading, error, refetch }
 }
 
 // contactos debe venir ordenado por fecha desc (así lo entrega useContactos)
