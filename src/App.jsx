@@ -152,7 +152,8 @@ export default function App() {
   const cntAlertas=useMemo(()=>
     esps.flatMap(e=>alertas(e)).filter(a=>a.p<2).length,[esps]);
 
-  const showToast=(ico,msg)=>{setToast({ico,msg});setTimeout(()=>setToast(null),3000);};
+  const showToast=(ico,msg,duration=3000)=>{setToast({ico,msg});setTimeout(()=>setToast(null),duration);};
+  const showError=(msg)=>showToast("alertCircle",msg,5000);
 
   async function agregarContacto(especialistaId, {tipo, nota}) {
     const { error } = await supabase
@@ -167,7 +168,7 @@ export default function App() {
 
     if (error) {
       console.error('Error al registrar contacto:', error);
-      alert('No se pudo registrar el contacto: ' + error.message);
+      showError('No se pudo registrar el contacto: ' + error.message);
       return;
     }
 
@@ -183,7 +184,7 @@ export default function App() {
 
     if (error) {
       console.error('Error al guardar cambios:', error);
-      alert('No se pudo guardar: ' + error.message);
+      showError('No se pudo guardar: ' + error.message);
       return;
     }
 
@@ -206,7 +207,7 @@ export default function App() {
 
     if (error) {
       console.error('Error al agregar especialista:', error);
-      alert('No se pudo guardar: ' + error.message);
+      showError('No se pudo guardar: ' + error.message);
       return;
     }
 
@@ -220,7 +221,7 @@ export default function App() {
 
     if (error) {
       console.error('Error al agregar organización:', error);
-      alert('No se pudo guardar: ' + error.message);
+      showError('No se pudo guardar: ' + error.message);
       return;
     }
 
@@ -232,7 +233,7 @@ export default function App() {
     const { error } = await crearObjetivoAnual(datos);
     if (error) {
       console.error('Error al guardar el objetivo de UDN:', error);
-      alert('No se pudo guardar: ' + error.message);
+      showError('No se pudo guardar: ' + error.message);
       return;
     }
     showToast("check", `Objetivo ${datos.anio} de ${datos.nombre_udn} guardado`);
@@ -242,7 +243,7 @@ export default function App() {
     const { error } = await editarObjetivoAnual(id, datos);
     if (error) {
       console.error('Error al editar el objetivo de UDN:', error);
-      alert('No se pudo guardar: ' + error.message);
+      showError('No se pudo guardar: ' + error.message);
       return;
     }
     showToast("check", `Objetivo ${datos.anio} actualizado`);
@@ -252,7 +253,7 @@ export default function App() {
     const { error } = await guardarAvanceMensual(udnObjetivoId, periodo, datos);
     if (error) {
       console.error('Error al guardar el avance mensual:', error);
-      alert('No se pudo guardar: ' + error.message);
+      showError('No se pudo guardar: ' + error.message);
       return;
     }
     showToast("check", `Avance de ${periodo.slice(0,7)} guardado`);
@@ -268,7 +269,7 @@ export default function App() {
       const { importarPolizasDesdeExcel } = await import("./lib/importarPolizas");
       const resumen = await importarPolizasDesdeExcel(file, { supabase, profileId: user.id });
       if (resumen.total === 0) {
-        alert("El archivo no tiene filas con número de póliza válido.");
+        showError("El archivo no tiene filas con número de póliza válido.");
         return;
       }
       const orgMsg = resumen.organizadoresCreados.length
@@ -278,7 +279,7 @@ export default function App() {
       if (resumen.organizadoresCreados.length) refetchOrganizadores();
     } catch (err) {
       console.error('Error al importar pólizas:', err);
-      alert('No se pudo completar la importación: ' + err.message);
+      showError('No se pudo completar la importación: ' + err.message);
     } finally {
       setImportando(false);
     }
@@ -294,7 +295,7 @@ export default function App() {
       const { importarSignosDesdeArchivos } = await import("./lib/importarSignos");
       const resumen = await importarSignosDesdeArchivos(files, { supabase, profileId: user.id });
       if (resumen.totalPdfs === 0) {
-        alert("No se encontró ningún PDF en lo que subiste.");
+        showError("No se encontró ningún PDF en lo que subiste.");
         return;
       }
       const orgMsg = resumen.organizadoresCreados.length
@@ -309,7 +310,7 @@ export default function App() {
       if (resumen.organizadoresCreados.length) refetchOrganizadores();
     } catch (err) {
       console.error('Error al importar Signos:', err);
-      alert('No se pudo completar la importación: ' + err.message);
+      showError('No se pudo completar la importación: ' + err.message);
     } finally {
       setImportandoSignos(false);
     }
@@ -356,7 +357,7 @@ export default function App() {
     {toast&&<Card style={{position:"fixed",bottom:22,right:22,borderRadius:9,padding:"11px 16px",display:"flex",
       alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.45)",
       zIndex:500,fontSize:13,color:T.t1,fontWeight:600}}>
-      <Icon name={toast.ico} size={18} color={T.verde}/>{toast.msg}
+      <Icon name={toast.ico} size={18} color={toast.ico==="alertCircle"?T.rojo:T.verde}/>{toast.msg}
     </Card>}
   </div>;
 }
