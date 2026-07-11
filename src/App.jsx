@@ -176,10 +176,20 @@ export default function App() {
   }
 
   async function guardar(especialistaActualizado) {
-    const { id, nombre, zona, activo, organizador_id, es_externo } = especialistaActualizado;
+    const { id, nombre, zona, activo, organizador_id, es_externo,
+      tel, email, notas, estrategia, inconvenientes, plan } = especialistaActualizado;
     const { error } = await supabase
       .from('especialistas')
-      .update({ nombre, zona, activo, organizador_id, es_externo })
+      .update({
+        nombre, zona, activo, organizador_id, es_externo,
+        tel, email, notas, estrategia, inconvenientes,
+        plan_desc: plan?.desc,
+        plan_fecha_inicio: plan?.fechaInicio || null,
+        plan_fecha_fin: plan?.fechaFin || null,
+        plan_polizas_obj: plan?.polizasObj,
+        plan_prima_obj: plan?.primaObj,
+        plan_com_pct: plan?.comPct,
+      })
       .eq('id', id);
 
     if (error) {
@@ -202,6 +212,15 @@ export default function App() {
         profile_id: user.id,
         organizador_id: datosNuevoEspecialista.organizador_id,
         es_externo: datosNuevoEspecialista.es_externo,
+        tel: datosNuevoEspecialista.tel,
+        email: datosNuevoEspecialista.email,
+        notas: datosNuevoEspecialista.notas,
+        plan_desc: datosNuevoEspecialista.plan.desc,
+        plan_fecha_inicio: datosNuevoEspecialista.plan.fechaInicio || null,
+        plan_fecha_fin: datosNuevoEspecialista.plan.fechaFin || null,
+        plan_polizas_obj: datosNuevoEspecialista.plan.polizasObj,
+        plan_prima_obj: datosNuevoEspecialista.plan.primaObj,
+        plan_com_pct: datosNuevoEspecialista.plan.comPct,
       }])
       .select();
 
