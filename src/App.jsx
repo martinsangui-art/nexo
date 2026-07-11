@@ -179,17 +179,21 @@ export default function App() {
   async function guardar(especialistaActualizado) {
     const { id, nombre, zona, activo, organizador_id, es_externo,
       tel, email, notas, estrategia, inconvenientes, plan } = especialistaActualizado;
+    // Los inputs de fecha vacíos llegan como "" — se normalizan a null para que
+    // coincida con lo que queda persistido en Supabase (evita un ~NaN transitorio
+    // en la proyección hasta el próximo refetch, ver PanelDetalle/proyeccion()).
+    const planNormalizado = plan && { ...plan, fechaInicio: plan.fechaInicio || null, fechaFin: plan.fechaFin || null };
     const { error } = await supabase
       .from('especialistas')
       .update({
         nombre, zona, activo, organizador_id, es_externo,
         tel, email, notas, estrategia, inconvenientes,
-        plan_desc: plan?.desc,
-        plan_fecha_inicio: plan?.fechaInicio || null,
-        plan_fecha_fin: plan?.fechaFin || null,
-        plan_polizas_obj: plan?.polizasObj,
-        plan_prima_obj: plan?.primaObj,
-        plan_com_pct: plan?.comPct,
+        plan_desc: planNormalizado?.desc,
+        plan_fecha_inicio: planNormalizado?.fechaInicio,
+        plan_fecha_fin: planNormalizado?.fechaFin,
+        plan_polizas_obj: planNormalizado?.polizasObj,
+        plan_prima_obj: planNormalizado?.primaObj,
+        plan_com_pct: planNormalizado?.comPct,
       })
       .eq('id', id);
 
@@ -199,7 +203,7 @@ export default function App() {
       return;
     }
 
-    if (selec?.id === id) setSelec(especialistaActualizado);
+    if (selec?.id === id) setSelec({ ...especialistaActualizado, plan: planNormalizado });
     refetch();
   }
 
