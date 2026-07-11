@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from './useAuth'
 
-export function useUdnObjetivos() {
-  const { user } = useAuth()
+export function useUdnObjetivos(userId) {
   const [objetivos, setObjetivos] = useState([])
   const [avanceMensual, setAvanceMensual] = useState([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +41,7 @@ export function useUdnObjetivos() {
   async function crearObjetivoAnual(datos) {
     const { data, error } = await supabase
       .from('udn_objetivos_anuales')
-      .insert([{ profile_id: user.id, ...datos }])
+      .insert([{ profile_id: userId, ...datos }])
       .select()
       .single()
     if (!error) await fetchTodo()

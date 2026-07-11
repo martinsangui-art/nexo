@@ -61,12 +61,12 @@ export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { especialistas, loading: espLoading, error: espError, refetch } = useEspecialistas();
   const { contactos: contactosDB, refetch: refetchContactos } = useContactos();
-  const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador, refetch: refetchOrganizadores } = useOrganizadores();
+  const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador, refetch: refetchOrganizadores } = useOrganizadores(user?.id);
   const { polizas, refetch: refetchPolizas } = usePolizas();
   const { organizadorCodigos, refetch: refetchOrganizadorCodigos } = useOrganizadorCodigos();
   const { organizadorKpis, refetch: refetchOrganizadorKpis } = useOrganizadorKpis();
   const { objetivos: udnObjetivos, avanceMensual: udnAvanceMensual, loading: udnLoading, error: udnError,
-    crearObjetivoAnual, editarObjetivoAnual, guardarAvanceMensual } = useUdnObjetivos();
+    crearObjetivoAnual, editarObjetivoAnual, guardarAvanceMensual } = useUdnObjetivos(user?.id);
   const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
   const [selec,setSelec]=useState(null);
