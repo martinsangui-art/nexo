@@ -13,6 +13,8 @@ import Login from "./components/Login";
 import FichaOrganizador from "./components/FichaOrganizador";
 import PanelObjetivosUDN from "./components/PanelObjetivosUDN";
 import { T, fmt$, fmtD, fmtDc, pct, Barra, Av, Card, Sec, Inp, BtnP, BtnS, Icon, Num } from "./lib/ui.jsx";
+import { HOY, ds, dH, dD, sem, ritmoNecesario, velocidadActual, proyeccion, alertas, normalizarEspecialista, TIPOS, TIPO_E } from "./lib/especialistas.js";
+import { Spark, GaugeRitmo, SemTag } from "./components/Atoms.jsx";
 
 /* ═══════════════════════════════════════════════════════════════════
    NEXO v4.1 — Seguimiento Comercial · Federación Patronal Retiro
@@ -45,150 +47,6 @@ if (typeof document !== "undefined" && !document.getElementById("nexo-font")) {
   `;
   document.head.appendChild(style);
 }
-
-// ─── HELPERS (especialista-específicos; T/fmt/Card/etc viven en ./lib/ui.jsx) ──
-const HOY   = new Date();
-const ds    = (d=0) => { const x=new Date(HOY); x.setDate(HOY.getDate()+d); return x.toISOString().slice(0,10); };
-const dH    = d => d?Math.ceil((new Date(d)-HOY)/86400000):null;
-const dD    = d => {
-  if(!d) return 999;
-  const hoyDia = new Date(HOY.getFullYear(),HOY.getMonth(),HOY.getDate());
-  const f = new Date(d);
-  const fDia = new Date(f.getFullYear(),f.getMonth(),f.getDate());
-  return Math.max(0,Math.round((hoyDia-fDia)/86400000));
-};
-
-// Semáforo: brecha entre % tiempo consumido y % objetivo alcanzado
-const sem = e => {
-  const {plan,avance} = e;
-  if(!plan.fechaFin||!plan.fechaInicio) return {c:T.t3,bg:T.s3,label:"Sin plan",nivel:3};
-  const tot = Math.max((new Date(plan.fechaFin)-new Date(plan.fechaInicio))/86400000,1);
-  const pas = Math.max(Math.min((HOY-new Date(plan.fechaInicio))/86400000,tot),0);
-  const br  = (pas/tot*100) - pct(avance.polizas,plan.polizasObj);
-  if(br>30) return {c:T.rojo, bg:T.rojoS, label:"Atrasado",  nivel:0};
-  if(br>10) return {c:T.ambar,bg:T.ambarS,label:"En riesgo", nivel:1};
-  return          {c:T.verde,bg:T.verdeS,label:"En ritmo",  nivel:2};
-};
-
-// Ritmo necesario para cumplir objetivo
-const ritmoNecesario = e => {
-  const dr = dH(e.plan.fechaFin);
-  if(!dr||dr<=0) return null;
-  const faltanPol = Math.max(0,e.plan.polizasObj-e.avance.polizas);
-  return (faltanPol/dr*7).toFixed(1); // pólizas/semana necesarias
-};
-
-// Velocidad actual (pólizas/semana)
-const velocidadActual = e => {
-  const h = e.historialAvance;
-  if(h.length<2) return 0;
-  const ultimo = h[h.length-1];
-  const penultimo = h[h.length-2];
-  const dias = Math.max((new Date(ultimo.fecha)-new Date(penultimo.fecha))/86400000,1);
-  return ((ultimo.polizas-penultimo.polizas)/dias*7).toFixed(1);
-};
-
-// Proyección al cierre
-const proyeccion = e => {
-  const dt  = Math.max(Math.ceil((HOY-new Date(e.plan.fechaInicio))/86400000),1);
-  const dtp = Math.max(Math.ceil((new Date(e.plan.fechaFin)-new Date(e.plan.fechaInicio))/86400000),1);
-  return Math.round(e.avance.polizas/dt*dtp);
-};
-
-// Alertas automáticas
-const alertas = e => {
-  const r=[], s=sem(e), dsc=dD(e.contactos[0]?.fecha), dr=dH(e.plan.fechaFin);
-  if(s.label==="Atrasado")           r.push({p:0,ico:"alertCircle",msg:"Muy atrasado — intervención urgente",    c:T.rojo});
-  if(dr!==null&&dr<=0)               r.push({p:0,ico:"zap",msg:"Plan vencido — definir renovación",       c:T.rojo});
-  if(e.avance.rescates>0)            r.push({p:0,ico:"trendingDown",msg:`${e.avance.rescates} rescate${e.avance.rescates>1?"s":""} en el período`,c:T.rojo});
-  if(dsc>14)                         r.push({p:1,ico:"phone",msg:`Sin contacto hace ${dsc} días`,            c:T.ambar});
-  if(dr!==null&&dr>0&&dr<=21)        r.push({p:1,ico:"clock", msg:`Cierre en ${dr} días`,                    c:T.ambar});
-  if(e.inconvenientes?.trim()&&dsc>5)r.push({p:1,ico:"alertTriangle",msg:"Inconvenientes sin resolver",             c:T.ambar});
-  if(s.label==="En riesgo")          r.push({p:1,ico:"alertCircle",msg:"Ritmo por debajo del objetivo",            c:T.ambar});
-  if(pct(e.avance.polizas,e.plan.polizasObj)>=100) r.push({p:2,ico:"award",msg:"Objetivo cumplido",         c:T.verde});
-  return r.sort((a,b)=>a.p-b.p);
-};
-
-// Completa con valores por defecto los campos que la tabla real de Supabase
-// (nombre, zona, activo) todavía no tiene, para que el resto de la UI
-// (pensada para el shape de DEMO) no rompa al recibir especialistas reales.
-const normalizarEspecialista = e => ({
-  ...e,
-  org: e.org ?? e.zona ?? "",
-  tel: e.tel ?? "",
-  email: e.email ?? "",
-  notas: e.notas ?? "",
-  plan: e.plan ?? {desc:"",fechaInicio:null,fechaFin:null,polizasObj:0,primaObj:0,comPct:0},
-  avance: e.avance ?? {polizas:0,prima:0,comision:0,rescates:0,ultimaAct:null},
-  historialAvance: e.historialAvance ?? [],
-  contactos: e.contactos ?? [],
-  inconvenientes: e.inconvenientes ?? "",
-  estrategia: e.estrategia ?? "",
-  mails: e.mails ?? 0,
-});
-
-// Los "id" son los valores válidos que acepta el check constraint
-// contactos_canal_check en Supabase — deben ir en minúscula sin tilde.
-const TIPOS = [{id:"email",e:"mail",l:"Email"},{id:"whatsapp",e:"messageCircle",l:"WhatsApp"},
-               {id:"llamada",e:"phone",l:"Llamada"},{id:"presencial",e:"users",l:"Presencial"},
-               {id:"video",e:"video",l:"Video"},{id:"agencia",e:"building",l:"Agencia"},
-               {id:"oficina",e:"building",l:"Oficina"},{id:"comision",e:"briefcase",l:"Comisión"}];
-const TIPO_E = Object.fromEntries(TIPOS.map(t=>[t.id,t.e]));
-
-// ─── ÁTOMOS (especialista-específicos; Barra/Card/Sec/etc en ./lib/ui.jsx) ──
-// Sparkline SVG — visualiza tendencia de pólizas
-const Spark = ({data,color,w=80,h=28}) => {
-  if(!data||data.length<2) return <span style={{fontSize:11,color:T.t3}}>—</span>;
-  const vals = data.map(d=>d.polizas);
-  const mn=Math.min(...vals), mx=Math.max(...vals);
-  const rng = mx-mn||1;
-  const pts = vals.map((v,i)=>{
-    const x = (i/(vals.length-1))*(w-4)+2;
-    const y = h-2-((v-mn)/rng)*(h-4);
-    return `${x},${y}`;
-  }).join(" ");
-  return <svg width={w} height={h} style={{overflow:"visible"}}>
-    <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
-      style={{filter:`drop-shadow(0 0 3px ${color}88)`}}/>
-    <circle cx={pts.split(" ").pop().split(",")[0]} cy={pts.split(" ").pop().split(",")[1]}
-      r={2.5} fill={color}/>
-  </svg>;
-};
-
-// Gauge de velocidad: qué tan cerca está del ritmo necesario
-const GaugeRitmo = ({actual,necesario,color}) => {
-  if(!necesario||necesario<=0||!actual||isNaN(actual)||isNaN(necesario)) return <span style={{fontSize:10,color:T.t3}}>—</span>;
-  const ratio = Math.min(actual/necesario,1.5);
-  const deg   = ratio*180;
-  const r=22, cx=28, cy=28;
-  const arc = (a) => {
-    const rad=(a-90)*Math.PI/180;
-    return {x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};
-  };
-  const s=arc(-90), e=arc(-90+Math.min(deg,180));
-  const big = deg>180?1:0;
-  return <svg width={56} height={32} style={{flexShrink:0}}>
-    <path d={`M${s.x},${s.y} A${r},${r} 0 0 1 ${arc(90).x},${arc(90).y}`}
-      fill="none" stroke={T.s4} strokeWidth={5} strokeLinecap="round"/>
-    <path d={`M${s.x},${s.y} A${r},${r} 0 ${big} 1 ${e.x},${e.y}`}
-      fill="none" stroke={color} strokeWidth={5} strokeLinecap="round"
-      style={{filter:`drop-shadow(0 0 4px ${color}66)`}}/>
-    <text x={cx} y={cy+2} textAnchor="middle" fontSize={8} fill={color} fontWeight={700}>
-      {(actual/necesario*100).toFixed(0)}%
-    </text>
-  </svg>;
-};
-
-const SemTag = ({e,sm}) => {
-  const s=sem(e);
-  return <span style={{display:"inline-flex",alignItems:"center",gap:4,background:s.bg,color:s.c,
-    padding:sm?"2px 8px":"4px 11px",borderRadius:20,fontSize:sm?10:12,fontWeight:800,
-    border:`1px solid ${s.c}33`,whiteSpace:"nowrap"}}>
-    <span style={{width:6,height:6,borderRadius:"50%",background:s.c,display:"inline-block",
-      boxShadow:`0 0 5px ${s.c}`}}/>
-    {s.label}
-  </span>;
-};
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────
 const NAV_ITEMS = [
