@@ -8,8 +8,6 @@ import { useOrganizadorCodigos } from "./hooks/useOrganizadorCodigos";
 import { useOrganizadorKpis } from "./hooks/useOrganizadorKpis";
 import { useUdnObjetivos } from "./hooks/useUdnObjetivos";
 import { supabase } from "./lib/supabase";
-import { importarPolizasDesdeExcel } from "./lib/importarPolizas";
-import { importarSignosDesdeArchivos } from "./lib/importarSignos";
 import { calcularIndicePenetracion, calcularOportunidad, calcularFaltantes, ultimoPeriodo } from "./lib/fuerzaComercial";
 import Login from "./components/Login";
 import FichaOrganizador from "./components/FichaOrganizador";
@@ -1600,6 +1598,7 @@ export default function App() {
 
     setImportando(true);
     try {
+      const { importarPolizasDesdeExcel } = await import("./lib/importarPolizas");
       const resumen = await importarPolizasDesdeExcel(file, { supabase, profileId: user.id });
       if (resumen.total === 0) {
         alert("El archivo no tiene filas con número de póliza válido.");
@@ -1625,6 +1624,7 @@ export default function App() {
 
     setImportandoSignos(true);
     try {
+      const { importarSignosDesdeArchivos } = await import("./lib/importarSignos");
       const resumen = await importarSignosDesdeArchivos(files, { supabase, profileId: user.id });
       if (resumen.totalPdfs === 0) {
         alert("No se encontró ningún PDF en lo que subiste.");
