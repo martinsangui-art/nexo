@@ -207,7 +207,7 @@ export default function App() {
       .from('especialistas')
       .insert([{
         nombre: datosNuevoEspecialista.nombre,
-        zona: datosNuevoEspecialista.zona,
+        zona: datosNuevoEspecialista.org,
         activo: true,
         profile_id: user.id,
         organizador_id: datosNuevoEspecialista.organizador_id,
