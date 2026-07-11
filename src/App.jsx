@@ -72,6 +72,7 @@ export default function App() {
   const [selec,setSelec]=useState(null);
   const [selecOrg,setSelecOrg]=useState(null);
   const [showN,setShowN]=useState(false);
+  const [editarEsp,setEditarEsp]=useState(null);
   const [showOrgN,setShowOrgN]=useState(false);
   const [toast,setToast]=useState(null);
   const [importando,setImportando]=useState(false);
@@ -199,6 +200,28 @@ export default function App() {
     }
 
     if (selec?.id === id) setSelec(especialistaActualizado);
+    refetch();
+  }
+
+  function guardarEdicion(datos) {
+    guardar({ ...editarEsp, ...datos, zona: datos.org });
+    setEditarEsp(null);
+  }
+
+  async function eliminar(especialistaId) {
+    const { error } = await supabase
+      .from('especialistas')
+      .delete()
+      .eq('id', especialistaId);
+
+    if (error) {
+      console.error('Error al eliminar especialista:', error);
+      showError('No se pudo eliminar: ' + error.message);
+      return;
+    }
+
+    if (selec?.id === especialistaId) setSelec(null);
+    showToast("check", "Especialista eliminado");
     refetch();
   }
 
@@ -356,13 +379,22 @@ export default function App() {
     :tab==="alertas"?<PanelAlertas esps={esps} onVer={verE}/>
     :<PanelMetricas esps={esps} onVer={verE}/>;
 
+  const vistaPrincipal = selec
+    ? <PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar} onContacto={agregarContacto} organizadores={organizadores}
+        onEditar={()=>setEditarEsp(selec)}
+        onEliminar={()=>{
+          if(window.confirm(`¿Eliminar a ${selec.nombre}? Se van a borrar también sus contactos registrados. Esta acción no se puede deshacer.`)){
+            eliminar(selec.id);
+          }
+        }}/>
+    : vista;
+
   return <div style={{display:"flex",height:"100vh",
     fontFamily:"'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif",
     background:"var(--bg-gradient)",color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
     <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
-      <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vista}</div>
-      {selec&&<PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar} onContacto={agregarContacto} organizadores={organizadores}/>}
+      <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vistaPrincipal}</div>
       {selecOrg&&<FichaOrganizador organizador={selecOrg} codigos={selecOrg.codigos||[]}
         kpisOrg={organizadorKpis.filter(k=>k.organizador_id===selecOrg.id)}
         polizasOrg={polizas.filter(p=>p.organizador_id===selecOrg.id)}
@@ -370,6 +402,7 @@ export default function App() {
         onCerrar={()=>setSelecOrg(null)}/>}
     </div>
     {showN&&<ModalNuevo onGuardar={agregar} onCerrar={()=>setShowN(false)} organizadores={organizadores}/>}
+    {editarEsp&&<ModalNuevo especialista={editarEsp} onGuardar={guardarEdicion} onCerrar={()=>setEditarEsp(null)} organizadores={organizadores}/>}
     {showOrgN&&<ModalNuevaOrganizacion onGuardar={crearOrganizacion} onCerrar={()=>setShowOrgN(false)}/>}
     <input ref={fileImportRef} type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={manejarArchivoPolizas}/>
     <input ref={fileSignosRef} type="file" accept=".zip,.pdf" multiple style={{display:"none"}} onChange={manejarArchivoSignos}/>

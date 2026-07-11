@@ -3,7 +3,7 @@ import { T, fmt$, fmtD, fmtDc, pct, Barra, Av, Card, Sec, Inp, BtnP, BtnS, Icon,
 import { ds, dH, sem, ritmoNecesario, velocidadActual, proyeccion, alertas, TIPOS } from "../lib/especialistas.js";
 import { Spark, SemTag } from "./Atoms.jsx";
 
-export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores}) {
+export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores,onEditar,onEliminar}) {
   const [e,setE]=useState(esp);
   const [tab,setT]=useState("avance");
   const [showC,setSC]=useState(false);
@@ -59,11 +59,19 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
         background:T.s3,color:T.t1,resize:"none",marginBottom:8}}>
       {children}</textarea>;
 
-  return <div style={{width:420,flexShrink:0,minWidth:0,background:"var(--surface-gradient)",borderLeft:`1px solid ${T.bd}`,
-    display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
+  return <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
+
+    {/* Volver */}
+    <div style={{padding:"14px 18px 0",flexShrink:0}}>
+      <button onClick={onCerrar} style={{background:"none",border:"none",color:T.t3,fontSize:12,
+        cursor:"pointer",fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:5,padding:0}}>
+        ← Volver
+      </button>
+    </div>
 
     {/* Header */}
-    <div style={{background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,padding:"18px 18px 14px",flexShrink:0}}>
+    <div style={{background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,padding:"18px 24px 14px",flexShrink:0}}>
+      <div style={{maxWidth:680,margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
         <div style={{display:"flex",gap:10,alignItems:"center",flex:1,minWidth:0}}>
           <Av n={e.nombre} color={s.c} size={40}/>
@@ -75,9 +83,19 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
             <div style={{marginTop:5}}><SemTag e={e}/></div>
           </div>
         </div>
-        <button onClick={onCerrar} style={{background:T.s4,border:"none",color:T.t2,width:26,
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          {onEditar&&<button onClick={onEditar} title="Editar datos" style={{background:T.s4,border:"none",color:T.t2,width:26,
+            height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
+            alignItems:"center",justifyContent:"center"}}><Icon name="edit" size={12}/></button>}
+          {onEliminar&&<button onClick={onEliminar} title="Eliminar especialista" style={{background:T.s4,border:"none",color:T.rojo,width:26,
+            height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
+            alignItems:"center",justifyContent:"center"}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+          </button>}
+          <button onClick={onCerrar} style={{background:T.s4,border:"none",color:T.t2,width:26,
           height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
           alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="x" size={13}/></button>
+        </div>
       </div>
 
       {/* 5 KPIs en fila */}
@@ -104,10 +122,12 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
           {a.ico} {a.msg.slice(0,30)}{a.msg.length>30?"…":""}
         </span>)}
       </div>}
+      </div>
     </div>
 
     {/* Tabs */}
     <div style={{display:"flex",background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+      <div style={{display:"flex",maxWidth:680,margin:"0 auto",width:"100%"}}>
       {TABS.map(([id,ico,l])=><button key={id} onClick={()=>setT(id)} style={{
         flex:1,padding:"9px 2px",border:"none",background:"transparent",display:"flex",
         flexDirection:"column",alignItems:"center",gap:3,
@@ -115,17 +135,19 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
         color:tab===id?T.azulL:T.t3,
         borderBottom:tab===id?`2px solid ${T.azulL}`:"2px solid transparent",whiteSpace:"nowrap"}}>
         <Icon name={ico} size={13}/>{l}</button>)}
+      </div>
     </div>
 
     {/* Acciones rápidas */}
-    <div style={{display:"flex",gap:6,padding:"8px 14px",background:"var(--surface-gradient)",
-      borderBottom:`1px solid ${T.bd}`,flexShrink:0,flexWrap:"wrap"}}>
+    <div style={{background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+      <div style={{display:"flex",gap:6,padding:"8px 24px",maxWidth:680,margin:"0 auto",flexWrap:"wrap",boxSizing:"border-box"}}>
       <BtnP onClick={()=>setSC(!showC)} sm>＋ Contacto</BtnP>
       <BtnP onClick={()=>setSM(!showMail)} color={T.azulL} sm style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="mail" size={12}/> Mail</BtnP>
+      </div>
     </div>
 
     {/* Contenido */}
-    <div style={{flex:1,overflowY:"auto",padding:"14px"}}>
+    <div style={{flex:1,overflowY:"auto",padding:"14px 24px",maxWidth:680,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
 
       {/* ── AVANCE ── */}
       {tab==="avance"&&<div>

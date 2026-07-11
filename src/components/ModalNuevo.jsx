@@ -2,8 +2,16 @@ import { useState } from "react";
 import { T, Card, Inp, BtnS, BtnP, Icon } from "../lib/ui.jsx";
 import { ds } from "../lib/especialistas.js";
 
-export default function ModalNuevo({onGuardar,onCerrar,organizadores}) {
-  const [f,setF]=useState({nombre:"",org:"",tel:"",email:"",notas:"",
+export default function ModalNuevo({onGuardar,onCerrar,organizadores,especialista}) {
+  const editando = !!especialista;
+  const [f,setF]=useState(()=>especialista?{
+    nombre:especialista.nombre||"", org:especialista.org||"", tel:especialista.tel||"",
+    email:especialista.email||"", notas:especialista.notas||"",
+    organizadorId:especialista.organizador_id||"", esExterno:especialista.es_externo||false,
+    plan:{desc:especialista.plan?.desc||"", fechaInicio:especialista.plan?.fechaInicio||ds(0),
+      fechaFin:especialista.plan?.fechaFin||"", polizasObj:especialista.plan?.polizasObj||"",
+      primaObj:especialista.plan?.primaObj||"", comPct:especialista.plan?.comPct||""},
+  }:{nombre:"",org:"",tel:"",email:"",notas:"",
     organizadorId:"",esExterno:false,
     plan:{desc:"",fechaInicio:ds(0),fechaFin:"",polizasObj:"",primaObj:"",comPct:""}});
   const [orgErr,setOrgErr]=useState(null);
@@ -17,7 +25,7 @@ export default function ModalNuevo({onGuardar,onCerrar,organizadores}) {
       overflow:"hidden",display:"flex",flexDirection:"column",
       boxShadow:"0 24px 60px rgba(0,0,0,.55)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <div style={{fontSize:17,fontWeight:900,color:T.t1}}>Nuevo especialista</div>
+        <div style={{fontSize:17,fontWeight:900,color:T.t1}}>{editando?"Editar especialista":"Nuevo especialista"}</div>
         <button onClick={onCerrar} style={{background:T.s3,border:"none",color:T.t2,
           width:26,height:26,borderRadius:"50%",cursor:"pointer",display:"flex",
           alignItems:"center",justifyContent:"center"}}><Icon name="x" size={13}/></button>
@@ -76,14 +84,15 @@ export default function ModalNuevo({onGuardar,onCerrar,organizadores}) {
           if(!f.nombre)return;
           if(!f.esExterno && !f.organizadorId){setOrgErr('Elegí una organización o marcá "Es externo".');return;}
           setOrgErr(null);
-          onGuardar({...f,id:Date.now(),inconvenientes:"",
-          estrategia:"",mails:0,contactos:[],historialAvance:[],
-          avance:{polizas:0,prima:0,comision:0,rescates:0,ultimaAct:null},
-          organizador_id:f.esExterno?null:f.organizadorId,
-          es_externo:f.esExterno,
-          plan:{...f.plan,polizasObj:Number(f.plan.polizasObj)||0,
-            primaObj:Number(f.plan.primaObj)||0,comPct:Number(f.plan.comPct)||0}});}}>
-          Crear especialista</BtnP>
+          const payload={...f,
+            organizador_id:f.esExterno?null:f.organizadorId,
+            es_externo:f.esExterno,
+            plan:{...f.plan,polizasObj:Number(f.plan.polizasObj)||0,
+              primaObj:Number(f.plan.primaObj)||0,comPct:Number(f.plan.comPct)||0}};
+          onGuardar(editando?payload:{...payload,id:Date.now(),inconvenientes:"",
+            estrategia:"",mails:0,contactos:[],historialAvance:[],
+            avance:{polizas:0,prima:0,comision:0,rescates:0,ultimaAct:null}});}}>
+          {editando?"Guardar cambios":"Crear especialista"}</BtnP>
       </div>
     </Card>
   </div>;
