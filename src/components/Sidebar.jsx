@@ -44,7 +44,7 @@ const NAV_ICON_PATHS = {
   </>,
 };
 
-export default function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
+export default function Sidebar({tab,onTab,cnt,esps,onSignOut,whatsappHabilitado,onToggleWhatsapp}) {
   const [colapsado,setColapsado]=useState(()=>localStorage.getItem('nexo-sidebar-colapsado')==='true');
   useEffect(()=>{localStorage.setItem('nexo-sidebar-colapsado',String(colapsado));},[colapsado]);
 
@@ -122,6 +122,18 @@ export default function Sidebar({tab,onTab,cnt,esps,onSignOut}) {
           </span>
         </div>;
       })}
+    </div>}
+
+    {/* Toggle WhatsApp */}
+    {!colapsado&&<div style={{padding:"10px 12px",borderTop:`1px solid ${T.bd}`,
+      display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <span style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".08em"}}>WhatsApp Web</span>
+      <div onClick={onToggleWhatsapp} role="switch" aria-checked={whatsappHabilitado} style={{width:30,height:16,
+        borderRadius:20,cursor:"pointer",flexShrink:0,position:"relative",
+        background:whatsappHabilitado?T.verde:T.s4,transition:"background .15s"}}>
+        <div style={{width:12,height:12,borderRadius:"50%",background:"#fff",position:"absolute",top:2,
+          left:whatsappHabilitado?16:2,transition:"left .15s"}}/>
+      </div>
     </div>}
 
     {/* Colapsar/expandir */}

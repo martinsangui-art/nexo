@@ -79,6 +79,12 @@ export default function App() {
   const [importandoSignos,setImportandoSignos]=useState(false);
   const fileImportRef=useRef(null);
   const fileSignosRef=useRef(null);
+  const [whatsappHabilitado, setWhatsappHabilitado] = useState(
+    () => localStorage.getItem('nexo-whatsapp-habilitado') === 'true'
+  );
+  useEffect(() => {
+    localStorage.setItem('nexo-whatsapp-habilitado', String(whatsappHabilitado));
+  }, [whatsappHabilitado]);
 
   // Cruce Signos ↔ pólizas de retiro (sección 5 de la spec de Fuerza Comercial):
   // índice de penetración, oportunidad en pesos y detección de organizadores
@@ -145,7 +151,7 @@ export default function App() {
       ...e,
       contactos: contactosDB
         .filter(c=>c.especialista_id===e.id)
-        .map(c=>({fecha:c.fecha, tipo:c.canal, nota:c.notas})),
+        .map(c=>({id:c.id, fecha:c.fecha, tipo:c.canal, nota:c.notas, destacado:c.destacado})),
     }));
     setEsps(conContactosReales.map(normalizarEspecialista));
   },[especialistas,contactosDB]);
@@ -173,6 +179,20 @@ export default function App() {
       return;
     }
 
+    refetchContactos();
+  }
+
+  async function togglePinContacto(contactoId, destacadoActual) {
+    const { error } = await supabase
+      .from('contactos')
+      .update({ destacado: !destacadoActual })
+      .eq('id', contactoId);
+
+    if (error) {
+      console.error('Error al destacar contacto:', error);
+      showError('No se pudo actualizar el contacto: ' + error.message);
+      return;
+    }
     refetchContactos();
   }
 
@@ -390,13 +410,16 @@ export default function App() {
           if(window.confirm(`¿Eliminar a ${selec.nombre}? Se van a borrar también sus contactos registrados. Esta acción no se puede deshacer.`)){
             eliminar(selec.id);
           }
-        }}/>
+        }}
+        whatsappHabilitado={whatsappHabilitado}
+        onTogglePin={togglePinContacto}/>
     : vista;
 
   return <div style={{display:"flex",height:"100vh",
     fontFamily:"'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif",
     background:"var(--bg-gradient)",color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
-    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}/>
+    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}
+      whatsappHabilitado={whatsappHabilitado} onToggleWhatsapp={()=>setWhatsappHabilitado(v=>!v)}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
       <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vistaPrincipal}</div>
       {selecOrg&&<FichaOrganizador organizador={selecOrg} codigos={selecOrg.codigos||[]}
