@@ -69,7 +69,8 @@ export default function App() {
     crearObjetivoAnual, editarObjetivoAnual, guardarAvanceMensual } = useUdnObjetivos(user?.id);
   const [esps,setEsps]=useState([]);
   const [tab,setTab]=useState("dashboard");
-  const [selec,setSelec]=useState(null);
+  const [selecId,setSelecId]=useState(null);
+  const selec = useMemo(()=>esps.find(e=>e.id===selecId)??null,[esps,selecId]);
   const [selecOrg,setSelecOrg]=useState(null);
   const [showN,setShowN]=useState(false);
   const [editarEsp,setEditarEsp]=useState(null);
@@ -223,7 +224,6 @@ export default function App() {
       return;
     }
 
-    if (selec?.id === id) setSelec({ ...especialistaActualizado, plan: planNormalizado });
     refetch();
   }
 
@@ -244,7 +244,7 @@ export default function App() {
       return;
     }
 
-    if (selec?.id === especialistaId) setSelec(null);
+    if (selec?.id === especialistaId) setSelecId(null);
     showToast("check", "Especialista eliminado");
     refetch();
   }
@@ -382,8 +382,8 @@ export default function App() {
     }
   }
 
-  const verE=e=>{setSelec(e);setSelecOrg(null);};
-  const verOrg=o=>{setSelecOrg(o);setSelec(null);};
+  const verE=e=>{setSelecId(e.id);setSelecOrg(null);};
+  const verOrg=o=>{setSelecOrg(o);setSelecId(null);};
 
   if (authLoading) {
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",
@@ -404,7 +404,7 @@ export default function App() {
     :<PanelMetricas esps={esps} onVer={verE}/>;
 
   const vistaPrincipal = selec
-    ? <PanelDetalle esp={selec} onCerrar={()=>setSelec(null)} onGuardar={guardar} onContacto={agregarContacto} organizadores={organizadores}
+    ? <PanelDetalle esp={selec} onCerrar={()=>setSelecId(null)} onGuardar={guardar} onContacto={agregarContacto} organizadores={organizadores}
         onEditar={()=>setEditarEsp(selec)}
         onEliminar={()=>{
           if(window.confirm(`¿Eliminar a ${selec.nombre}? Se van a borrar también sus contactos registrados. Esta acción no se puede deshacer.`)){
@@ -418,7 +418,7 @@ export default function App() {
   return <div style={{display:"flex",height:"100vh",
     fontFamily:"'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif",
     background:"var(--bg-gradient)",color:T.t1,overflow:"hidden",position:"relative",zIndex:1}}>
-    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelec(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}
+    <Sidebar tab={tab} onTab={t=>{setTab(t);setSelecId(null);setSelecOrg(null);}} cnt={cntAlertas} esps={esps} onSignOut={signOut}
       whatsappHabilitado={whatsappHabilitado} onToggleWhatsapp={()=>setWhatsappHabilitado(v=>!v)}/>
     <div style={{flex:1,display:"flex",overflow:"hidden",minWidth:0}}>
       <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",minWidth:0}}>{vistaPrincipal}</div>
