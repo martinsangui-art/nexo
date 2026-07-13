@@ -3,9 +3,8 @@ import { T, fmt$, fmtD, fmtDc, pct, Barra, Av, Card, Sec, Inp, BtnP, BtnS, Icon,
 import { ds, dH, sem, ritmoNecesario, velocidadActual, proyeccion, alertas, TIPOS } from "../lib/especialistas.js";
 import { Spark, SemTag } from "./Atoms.jsx";
 
-export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores,onEditar,onEliminar}) {
+export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organizadores,onEditar,onEliminar,whatsappHabilitado,onTogglePin}) {
   const [e,setE]=useState(esp);
-  const [tab,setT]=useState("avance");
   const [showC,setSC]=useState(false);
   const [fC,setFC]=useState({tipo:"llamada",nota:""});
   const [showI,setSI]=useState(false);
@@ -20,6 +19,7 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
   const [fOrgId,setFOrgId]=useState(esp.organizador_id||"");
   const [fExterno,setFExterno]=useState(esp.es_externo||false);
   const [orgErr,setOrgErr]=useState(null);
+  const [historialExpandido,setHistorialExpandido]=useState(false);
   useEffect(()=>{setE(esp);setFI(esp.inconvenientes||"");setFE(esp.estrategia||"");setFP({...esp.plan});
     setFOrgId(esp.organizador_id||"");setFExterno(esp.es_externo||false);setOrgErr(null);},[esp]);
 
@@ -40,6 +40,10 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
     sync({...e,mails:(e.mails||0)+1,contactos:[{fecha:ds(0),tipo:"email",nota:`Mail: "${fMail.asunto}"`},...e.contactos]});
     onContacto(e.id,{tipo:"email",nota:`Mail: "${fMail.asunto}"`});
     setFM({asunto:"",cuerpo:""});setSM(false);};
+  const abrirWhatsapp=()=>{
+    window.open(`https://wa.me/${e.tel.replace(/\D/g,'')}`, '_blank');
+    sync({...e,contactos:[{fecha:ds(0),tipo:"whatsapp",nota:"WhatsApp abierto"},...e.contactos]});
+    onContacto(e.id,{tipo:"whatsapp",nota:"WhatsApp abierto"});};
 
   const s=sem(e), pp=pct(e.avance.polizas,e.plan.polizasObj);
   const ppr=pct(e.avance.prima,e.plan.primaObj);
@@ -49,15 +53,44 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
   const vAct=parseFloat(velocidadActual(e));
   const vNec=parseFloat(ritmoNecesario(e)||0);
 
-  const TABS=[["avance","barChart","Avance"],["historial","trendingUp","Historial"],
-              ["contactos","phone","Contactos"],["estrategia","target","Estrategia"],["plan","clipboard","Plan"]];
-
   const TA = ({c,children}) =>
     <textarea value={c.val} onChange={ev=>c.set(ev.target.value)} rows={c.rows||3}
       style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
         fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
         background:T.s3,color:T.t1,resize:"none",marginBottom:8}}>
       {children}</textarea>;
+
+  const btnAccionStyle = habilitado => ({padding:"8px 16px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
+    background:"transparent",color:T.t2,fontSize:13,fontWeight:600,fontFamily:"inherit",
+    display:"inline-flex",alignItems:"center",gap:6,
+    cursor:habilitado?"pointer":"not-allowed",opacity:habilitado?1:.4});
+
+  const historialCompleto=[...e.historialAvance].reverse();
+  const historialAMostrar=historialExpandido?historialCompleto:historialCompleto.slice(0,5);
+
+  const destacados=e.contactos.filter(c=>c.destacado);
+  const resto=e.contactos.filter(c=>!c.destacado);
+  const renderContacto=(c,esUltimo)=>{
+    const t=TIPOS.find(x=>x.id===c.tipo);
+    return <div key={c.id} style={{display:"flex",gap:10,padding:"10px 0",alignItems:"flex-start",
+      borderBottom:esUltimo?"none":`1px solid ${T.bd}`,
+      ...(c.destacado?{borderLeft:"3px solid var(--gold-bright)",paddingLeft:9}:{})}}>
+      <div style={{width:32,height:32,borderRadius:7,background:T.s3,flexShrink:0,color:T.azulL,
+        display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name={t?.e||"pin"} size={15}/></div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,alignItems:"center"}}>
+          <span style={{fontSize:11,fontWeight:700,color:T.azulL}}>{t?.l||c.tipo}</span>
+          <span style={{fontSize:10,color:T.t3}}>{fmtDc(c.fecha)}</span>
+        </div>
+        <div style={{fontSize:12,color:T.t2,lineHeight:1.5}}>{c.nota}</div>
+      </div>
+      <button onClick={()=>onTogglePin(c.id,c.destacado)} title={c.destacado?"Quitar destacado":"Destacar"}
+        style={{width:18,height:18,flexShrink:0,background:"none",border:"none",cursor:"pointer",padding:0,
+          color:c.destacado?"var(--gold-bright)":T.t3,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Icon name="star" size={15}/>
+      </button>
+    </div>;
+  };
 
   return <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
 
@@ -125,277 +158,148 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
       </div>
     </div>
 
-    {/* Tabs */}
-    <div style={{display:"flex",background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-      <div style={{display:"flex",maxWidth:680,margin:"0 auto",width:"100%"}}>
-      {TABS.map(([id,ico,l])=><button key={id} onClick={()=>setT(id)} style={{
-        flex:1,padding:"9px 2px",border:"none",background:"transparent",display:"flex",
-        flexDirection:"column",alignItems:"center",gap:3,
-        fontSize:10,fontWeight:tab===id?800:400,cursor:"pointer",fontFamily:"inherit",
-        color:tab===id?T.azulL:T.t3,
-        borderBottom:tab===id?`2px solid ${T.azulL}`:"2px solid transparent",whiteSpace:"nowrap"}}>
-        <Icon name={ico} size={13}/>{l}</button>)}
-      </div>
-    </div>
-
-    {/* Acciones rápidas */}
+    {/* Barra de acciones de contacto */}
     <div style={{background:"var(--surface-gradient)",borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-      <div style={{display:"flex",gap:6,padding:"8px 24px",maxWidth:680,margin:"0 auto",flexWrap:"wrap",boxSizing:"border-box"}}>
-      <BtnP onClick={()=>setSC(!showC)} sm>＋ Contacto</BtnP>
-      <BtnP onClick={()=>setSM(!showMail)} color={T.azulL} sm style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="mail" size={12}/> Mail</BtnP>
+      <div style={{display:"flex",gap:8,padding:"12px 24px",maxWidth:680,margin:"0 auto",flexWrap:"wrap",boxSizing:"border-box",alignItems:"center"}}>
+        <BtnP onClick={()=>setSC(!showC)} style={{display:"inline-flex",alignItems:"center",gap:6}}>
+          <Icon name="messageCircle" size={14}/> Registrar contacto
+        </BtnP>
+        <button {...(e.tel?{onClick:()=>window.open(`tel:${e.tel}`)}:{})}
+          title={!e.tel?"Sin teléfono cargado":undefined} style={btnAccionStyle(!!e.tel)}>
+          <Icon name="phone" size={13}/> Llamar
+        </button>
+        <button {...(e.email?{onClick:()=>setSM(!showMail)}:{})}
+          title={!e.email?"Sin email cargado":undefined} style={btnAccionStyle(!!e.email)}>
+          <Icon name="mail" size={13}/> Email
+        </button>
+        {whatsappHabilitado&&
+          <button {...(e.tel?{onClick:abrirWhatsapp}:{})}
+            title={!e.tel?"Sin teléfono cargado":undefined} style={btnAccionStyle(!!e.tel)}>
+            <Icon name="messageCircle" size={13}/> WhatsApp
+          </button>}
       </div>
     </div>
 
     {/* Contenido */}
     <div style={{flex:1,overflowY:"auto",padding:"14px 24px",maxWidth:680,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
 
-      {/* ── AVANCE ── */}
-      {tab==="avance"&&<div>
-        {showC&&<Card style={{padding:13,marginBottom:13}}>
-          <Sec>Registrar contacto</Sec>
-          <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
-            {TIPOS.map(t=><button key={t.id} onClick={()=>setFC(f=>({...f,tipo:t.id}))}
-              style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:20,cursor:"pointer",fontFamily:"inherit",
-                border:`1.5px solid ${fC.tipo===t.id?T.azul:T.bd2}`,
-                background:fC.tipo===t.id?T.azulS:"transparent",
-                color:fC.tipo===t.id?T.azulL:T.t2,fontSize:11,fontWeight:700}}>
-              <Icon name={t.e} size={12}/> {t.l}</button>)}
+      {showC&&<Card style={{padding:13,marginBottom:13}}>
+        <Sec>Registrar contacto</Sec>
+        <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
+          {TIPOS.map(t=><button key={t.id} onClick={()=>setFC(f=>({...f,tipo:t.id}))}
+            style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:20,cursor:"pointer",fontFamily:"inherit",
+              border:`1.5px solid ${fC.tipo===t.id?T.azul:T.bd2}`,
+              background:fC.tipo===t.id?T.azulS:"transparent",
+              color:fC.tipo===t.id?T.azulL:T.t2,fontSize:11,fontWeight:700}}>
+            <Icon name={t.e} size={12}/> {t.l}</button>)}
+        </div>
+        <textarea value={fC.nota} onChange={ev=>setFC(f=>({...f,nota:ev.target.value}))} rows={3}
+          placeholder="¿Qué hablaron? ¿Próximo paso?"
+          style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
+            fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
+            background:T.s3,color:T.t1,resize:"none",marginBottom:8}}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+          <BtnS onClick={()=>setSC(false)}>Cancelar</BtnS>
+          <BtnP onClick={guardC} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
+        </div>
+      </Card>}
+
+      {showMail&&<Card style={{padding:13,marginBottom:13}}>
+        <Sec>Redactar mail</Sec>
+        <div style={{fontSize:11,color:T.azulL,marginBottom:8}}>Para: {e.email}</div>
+        <div style={{marginBottom:8}}><label style={{fontSize:10,color:T.t3,fontWeight:700,
+          textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:4}}>Asunto</label>
+          <Inp value={fMail.asunto} onChange={v=>setFM(f=>({...f,asunto:v}))}
+            placeholder="Seguimiento plan comercial"/>
+        </div>
+        <div style={{marginBottom:8}}><label style={{fontSize:10,color:T.t3,fontWeight:700,
+          textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:4}}>Cuerpo</label>
+          <textarea value={fMail.cuerpo} onChange={ev=>setFM(f=>({...f,cuerpo:ev.target.value}))} rows={4}
+            style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
+              fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
+              background:T.s3,color:T.t1,resize:"none",marginBottom:8}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+          <BtnS onClick={()=>setSM(false)}>Cancelar</BtnS>
+          <BtnP onClick={enviarMail} color={T.azulL} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="mail" size={13}/> Abrir en mail</BtnP>
+        </div>
+      </Card>}
+
+      {/* ── a) PROGRESO ── */}
+      <Card style={{padding:13,marginBottom:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10}}>
+          <div>
+            <Sec>Pólizas vigentes</Sec>
+            <div style={{fontSize:40,fontWeight:900,color:T.azulL,letterSpacing:"-2px",lineHeight:1}}>
+              {e.avance.polizas}<span style={{fontSize:16,color:T.t3,fontWeight:400}}>/{e.plan.polizasObj}</span>
+            </div>
           </div>
-          <textarea value={fC.nota} onChange={ev=>setFC(f=>({...f,nota:ev.target.value}))} rows={3}
-            placeholder="¿Qué hablaron? ¿Próximo paso?"
+          <div style={{textAlign:"right"}}>
+            <Spark data={e.historialAvance} color={T.azulL} w={90} h={36}/>
+            <div style={{fontSize:10,color:T.t3,marginTop:4}}>tendencia</div>
+          </div>
+        </div>
+        <Barra val={pp} tot={100} color={T.azul} h={10}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Faltan</div>
+            <div style={{fontSize:14,fontWeight:700,color:T.t1}}>{Math.max(0,e.plan.polizasObj-e.avance.polizas)}</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Proyección</div>
+            <div style={{fontSize:14,fontWeight:700,color:proy>=e.plan.polizasObj?T.verde:T.ambar}}>~{proy}</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Vel. actual</div>
+            <div style={{fontSize:14,fontWeight:700,color:s.c}}>{vAct}<span style={{fontSize:10,color:T.t3}}>/sem</span></div>
+          </div>
+        </div>
+      </Card>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+        {[
+          {l:"Prima mensual",v:fmt$(e.avance.prima),o:fmt$(e.plan.primaObj),p:ppr,c:T.verde},
+          {l:"Comisión",v:fmt$(e.avance.comision),
+            o:fmt$(Math.round(e.avance.prima*e.plan.comPct/100)),p:null,c:T.ambar},
+        ].map(k=><Card key={k.l} style={{padding:11}}>
+          <Sec>{k.l}</Sec>
+          <div style={{fontSize:18,fontWeight:900,color:k.c,marginBottom:k.p!==null?6:2}}>{k.v}</div>
+          {k.p!==null&&<Barra val={k.p} tot={100} color={k.c} h={6}/>}
+          <div style={{fontSize:10,color:T.t3,marginTop:4}}>
+            {k.p!==null?`${k.p}% de ${k.o}`:`Devengada: ${k.o}`}
+          </div>
+        </Card>)}
+      </div>
+
+      <Card style={{padding:13,marginBottom:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <Sec style={{marginBottom:0}}>Inconvenientes</Sec>
+          <button onClick={()=>setSI(!showI)} style={{fontSize:11,color:T.azulL,background:"transparent",
+            border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+            display:"inline-flex",alignItems:"center",gap:4}}>
+            {showI?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
+        </div>
+        {showI?<div>
+          <textarea value={fI} onChange={ev=>setFI(ev.target.value)} rows={3}
             style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
               fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
               background:T.s3,color:T.t1,resize:"none",marginBottom:8}}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-            <BtnS onClick={()=>setSC(false)}>Cancelar</BtnS>
-            <BtnP onClick={guardC} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
+            <BtnS onClick={()=>{setSI(false);setFI(e.inconvenientes||"");}}>Cancelar</BtnS>
+            <BtnP onClick={()=>{sync({...e,inconvenientes:fI});setSI(false);}} color={T.verde}>Guardar</BtnP>
           </div>
-        </Card>}
+        </div>:(e.inconvenientes
+          ?<div style={{fontSize:13,color:T.t2,lineHeight:1.6,background:T.rojoS,borderRadius:7,
+              padding:"9px 11px",borderLeft:`2px solid ${T.rojo}`}}>{e.inconvenientes}</div>
+          :<div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin inconvenientes registrados</div>)}
+      </Card>
 
-        {showMail&&<Card style={{padding:13,marginBottom:13}}>
-          <Sec>Redactar mail</Sec>
-          <div style={{fontSize:11,color:T.azulL,marginBottom:8}}>Para: {e.email}</div>
-          <div style={{marginBottom:8}}><label style={{fontSize:10,color:T.t3,fontWeight:700,
-            textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:4}}>Asunto</label>
-            <Inp value={fMail.asunto} onChange={v=>setFM(f=>({...f,asunto:v}))}
-              placeholder="Seguimiento plan comercial"/>
-          </div>
-          <div style={{marginBottom:8}}><label style={{fontSize:10,color:T.t3,fontWeight:700,
-            textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:4}}>Cuerpo</label>
-            <textarea value={fMail.cuerpo} onChange={ev=>setFM(f=>({...f,cuerpo:ev.target.value}))} rows={4}
-              style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
-                fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
-                background:T.s3,color:T.t1,resize:"none",marginBottom:8}}/>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-            <BtnS onClick={()=>setSM(false)}>Cancelar</BtnS>
-            <BtnP onClick={enviarMail} color={T.azulL} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="mail" size={13}/> Abrir en mail</BtnP>
-          </div>
-        </Card>}
+      <div style={{textAlign:"right",fontSize:10,color:T.t3,marginBottom:20}}>
+        Última act: {fmtD(e.avance.ultimaAct)}
+      </div>
 
-        {/* Pólizas — métrica principal con gráfico */}
-        <Card style={{padding:13,marginBottom:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10}}>
-            <div>
-              <Sec>Pólizas vigentes</Sec>
-              <div style={{fontSize:40,fontWeight:900,color:T.azulL,letterSpacing:"-2px",lineHeight:1}}>
-                {e.avance.polizas}<span style={{fontSize:16,color:T.t3,fontWeight:400}}>/{e.plan.polizasObj}</span>
-              </div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <Spark data={e.historialAvance} color={T.azulL} w={90} h={36}/>
-              <div style={{fontSize:10,color:T.t3,marginTop:4}}>tendencia</div>
-            </div>
-          </div>
-          <Barra val={pp} tot={100} color={T.azul} h={10}/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
-            <div style={{textAlign:"center"}}>
-              <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Faltan</div>
-              <div style={{fontSize:14,fontWeight:700,color:T.t1}}>{Math.max(0,e.plan.polizasObj-e.avance.polizas)}</div>
-            </div>
-            <div style={{textAlign:"center"}}>
-              <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Proyección</div>
-              <div style={{fontSize:14,fontWeight:700,color:proy>=e.plan.polizasObj?T.verde:T.ambar}}>~{proy}</div>
-            </div>
-            <div style={{textAlign:"center"}}>
-              <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Vel. actual</div>
-              <div style={{fontSize:14,fontWeight:700,color:s.c}}>{vAct}<span style={{fontSize:10,color:T.t3}}>/sem</span></div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Prima + Comisión */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-          {[
-            {l:"Prima mensual",v:fmt$(e.avance.prima),o:fmt$(e.plan.primaObj),p:ppr,c:T.verde},
-            {l:"Comisión",v:fmt$(e.avance.comision),
-              o:fmt$(Math.round(e.avance.prima*e.plan.comPct/100)),p:null,c:T.ambar},
-          ].map(k=><Card key={k.l} style={{padding:11}}>
-            <Sec>{k.l}</Sec>
-            <div style={{fontSize:18,fontWeight:900,color:k.c,marginBottom:k.p!==null?6:2}}>{k.v}</div>
-            {k.p!==null&&<Barra val={k.p} tot={100} color={k.c} h={6}/>}
-            <div style={{fontSize:10,color:T.t3,marginTop:4}}>
-              {k.p!==null?`${k.p}% de ${k.o}`:`Devengada: ${k.o}`}
-            </div>
-          </Card>)}
-        </div>
-
-        {/* Inconvenientes */}
-        <Card style={{padding:13}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <Sec style={{marginBottom:0}}>Inconvenientes</Sec>
-            <button onClick={()=>setSI(!showI)} style={{fontSize:11,color:T.azulL,background:"transparent",
-              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
-              display:"inline-flex",alignItems:"center",gap:4}}>
-              {showI?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
-          </div>
-          {showI?<div>
-            <textarea value={fI} onChange={ev=>setFI(ev.target.value)} rows={3}
-              style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
-                fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
-                background:T.s3,color:T.t1,resize:"none",marginBottom:8}}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-              <BtnS onClick={()=>{setSI(false);setFI(e.inconvenientes||"");}}>Cancelar</BtnS>
-              <BtnP onClick={()=>{sync({...e,inconvenientes:fI});setSI(false);}} color={T.verde}>Guardar</BtnP>
-            </div>
-          </div>:(e.inconvenientes
-            ?<div style={{fontSize:13,color:T.t2,lineHeight:1.6,background:T.rojoS,borderRadius:7,
-                padding:"9px 11px",borderLeft:`2px solid ${T.rojo}`}}>{e.inconvenientes}</div>
-            :<div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin inconvenientes registrados</div>)}
-        </Card>
-
-        <div style={{textAlign:"right",fontSize:10,color:T.t3,marginTop:8}}>
-          Última act: {fmtD(e.avance.ultimaAct)}
-        </div>
-      </div>}
-
-      {/* ── HISTORIAL ── */}
-      {tab==="historial"&&<Card style={{padding:13}}>
-        <Sec>Evolución semanal</Sec>
-        {e.historialAvance.length===0
-          ?<div style={{textAlign:"center",color:T.t3,padding:"20px 0",fontSize:12}}>Sin historial aún.</div>
-          :[...e.historialAvance].reverse().map((h,i,arr)=>{
-            const prev=arr[i+1];
-            const dP=prev?h.polizas-prev.polizas:h.polizas;
-            const dPr=prev?h.prima-prev.prima:h.prima;
-            return <div key={i} style={{paddingBottom:12,marginBottom:12,
-              borderBottom:i<arr.length-1?`1px solid ${T.bd}`:"none"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
-                <span style={{fontSize:11,fontWeight:700,color:T.azulL}}>Import del {fmtDc(h.fecha)}</span>
-                {dP>0&&<span style={{fontSize:10,fontWeight:800,color:T.verde,background:T.verdeS,
-                  borderRadius:5,padding:"1px 7px"}}>+{dP} póliza{dP>1?"s":""}</span>}
-                {dP<0&&<span style={{fontSize:10,fontWeight:800,color:T.rojo,background:T.rojoS,
-                  borderRadius:5,padding:"1px 7px"}}>{dP} (rescates)</span>}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                {[
-                  {l:"Pólizas",v:h.polizas,d:dP,c:T.azulL},
-                  {l:"Prima",v:fmt$(h.prima),d:dPr,c:T.verde,fmt:true},
-                  {l:"% obj.",v:`${pct(h.polizas,e.plan.polizasObj)}%`,d:null,c:T.ambar},
-                ].map(m=><Card key={m.l} style={{borderRadius:7,padding:8,textAlign:"center"}}>
-                  <div style={{fontSize:13,fontWeight:900,color:m.c}}>{m.v}</div>
-                  {m.d!==null&&m.d!==0&&<div style={{fontSize:9,color:m.d>0?T.verde:T.rojo,fontWeight:700}}>
-                    {m.d>0?"+":""}{m.fmt?fmt$(m.d):m.d}</div>}
-                  <div style={{fontSize:8,color:T.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
-                </Card>)}
-              </div>
-            </div>;
-          })}
-      </Card>}
-
-      {/* ── CONTACTOS ── */}
-      {tab==="contactos"&&<Card style={{padding:13}}>
-        <Sec>Historial de contactos ({e.contactos.length})</Sec>
-        {e.contactos.length===0&&<div style={{textAlign:"center",color:T.t3,padding:"16px 0",fontSize:12}}>Sin contactos</div>}
-        {e.contactos.map((c,i)=>{
-          const t=TIPOS.find(x=>x.id===c.tipo);
-          return <div key={i} style={{display:"flex",gap:10,padding:"10px 0",
-            borderBottom:i<e.contactos.length-1?`1px solid ${T.bd}`:"none",alignItems:"flex-start"}}>
-            <div style={{width:32,height:32,borderRadius:7,background:T.s3,flexShrink:0,color:T.azulL,
-              display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name={t?.e||"pin"} size={15}/></div>
-            <div style={{flex:1}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,alignItems:"center"}}>
-                <span style={{fontSize:11,fontWeight:700,color:T.azulL}}>{t?.l||c.tipo}</span>
-                <span style={{fontSize:10,color:T.t3}}>{fmtDc(c.fecha)}</span>
-              </div>
-              <div style={{fontSize:12,color:T.t2,lineHeight:1.5}}>{c.nota}</div>
-            </div>
-          </div>;
-        })}
-      </Card>}
-
-      {/* ── ESTRATEGIA ── */}
-      {tab==="estrategia"&&<div>
-        <Card style={{padding:13,marginBottom:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <Sec style={{marginBottom:0}}>Organización</Sec>
-            <button onClick={()=>setSOrg(!showOrg)} style={{fontSize:11,color:T.azulL,background:"transparent",
-              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
-              display:"inline-flex",alignItems:"center",gap:4}}>
-              {showOrg?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
-          </div>
-          {showOrg?<div>
-            <select value={fOrgId} disabled={fExterno} onChange={ev=>setFOrgId(ev.target.value)}
-              style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,fontSize:13,
-                fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:fExterno?T.s4:T.s3,
-                color:fExterno?T.t3:T.t1,opacity:fExterno?.6:1,marginBottom:8}}>
-              <option value="">Seleccionar organización...</option>
-              {organizadores.map(o=><option key={o.id} value={o.id}>{o.razon_social}</option>)}
-            </select>
-            <label style={{display:"flex",alignItems:"center",gap:7,marginBottom:8,cursor:"pointer"}}>
-              <input type="checkbox" checked={fExterno}
-                onChange={ev=>{const v=ev.target.checked;setFExterno(v);if(v)setFOrgId("");}}/>
-              <span style={{fontSize:12,color:T.t2}}>Es externo (sin organización)</span>
-            </label>
-            {orgErr&&<div style={{fontSize:11,color:T.rojo,marginBottom:8}}>{orgErr}</div>}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-              <BtnS onClick={()=>{setSOrg(false);setFOrgId(e.organizador_id||"");setFExterno(e.es_externo||false);setOrgErr(null);}}>Cancelar</BtnS>
-              <BtnP onClick={guardOrg} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
-            </div>
-          </div>:(e.es_externo
-            ?<div style={{fontSize:12,color:T.t2,display:"flex",alignItems:"center",gap:5}}>
-              <span style={{width:5,height:5,borderRadius:"50%",background:T.t2,display:"inline-block"}}/>
-              Externo (sin organización)</div>
-            :<div style={{fontSize:12,color:T.t2}}>
-              {organizadores.find(o=>o.id===e.organizador_id)?.razon_social || "Sin asignar"}
-            </div>)}
-        </Card>
-        <Card style={{padding:13,marginBottom:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <Sec style={{marginBottom:0}}>Estrategia acordada</Sec>
-            <button onClick={()=>setSE(!showE)} style={{fontSize:11,color:T.azulL,background:"transparent",
-              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
-              display:"inline-flex",alignItems:"center",gap:4}}>
-              {showE?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
-          </div>
-          {showE?<div>
-            <textarea value={fE} onChange={ev=>setFE(ev.target.value)} rows={5}
-              style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
-                fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
-                background:T.s3,color:T.t1,resize:"none",marginBottom:8}}
-              placeholder="Estrategia acordada con el especialista..."/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-              <BtnS onClick={()=>{setSE(false);setFE(e.estrategia||"");}}>Cancelar</BtnS>
-              <BtnP onClick={()=>{sync({...e,estrategia:fE});setSE(false);}} color={T.verde}>Guardar</BtnP>
-            </div>
-          </div>:(e.estrategia
-            ?<div style={{fontSize:13,color:T.t2,lineHeight:1.7}}>{e.estrategia}</div>
-            :<div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin estrategia definida</div>)}
-        </Card>
-        <Card style={{padding:13}}>
-          <Sec>Datos de contacto</Sec>
-          {[["phone","Teléfono",e.tel],["mail","Email",e.email]].map(([ico,l,v])=>
-            <div key={l} style={{display:"flex",justifyContent:"space-between",
-              padding:"7px 0",borderBottom:`1px solid ${T.bd}`}}>
-              <span style={{fontSize:11,color:T.t3,display:"flex",alignItems:"center",gap:5}}><Icon name={ico} size={11}/>{l}</span>
-              <span style={{fontSize:12,fontWeight:600,color:T.t1}}>{v||"—"}</span>
-            </div>)}
-          {e.notas&&<div style={{fontSize:12,color:T.t2,lineHeight:1.6,marginTop:10}}>{e.notas}</div>}
-        </Card>
-      </div>}
-
-      {/* ── PLAN ── */}
-      {tab==="plan"&&<Card style={{padding:13}}>
+      {/* ── b) PLAN COMERCIAL ── */}
+      <Card style={{padding:13,marginBottom:20}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <Sec style={{marginBottom:0}}>Plan comercial</Sec>
           <button onClick={()=>setEP(!editPlan)} style={{fontSize:11,color:T.azulL,background:"transparent",
@@ -454,7 +358,133 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
             </div>
           </Card>
         </div>}
-      </Card>}
+      </Card>
+
+      {/* ── c) ESTRATEGIA ACORDADA ── */}
+      <Card style={{padding:13,marginBottom:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <Sec style={{marginBottom:0}}>Estrategia acordada</Sec>
+          <button onClick={()=>setSE(!showE)} style={{fontSize:11,color:T.azulL,background:"transparent",
+            border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+            display:"inline-flex",alignItems:"center",gap:4}}>
+            {showE?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
+        </div>
+        {showE?<div>
+          <textarea value={fE} onChange={ev=>setFE(ev.target.value)} rows={5}
+            style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
+              fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
+              background:T.s3,color:T.t1,resize:"none",marginBottom:8}}
+            placeholder="Estrategia acordada con el especialista..."/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+            <BtnS onClick={()=>{setSE(false);setFE(e.estrategia||"");}}>Cancelar</BtnS>
+            <BtnP onClick={()=>{sync({...e,estrategia:fE});setSE(false);}} color={T.verde}>Guardar</BtnP>
+          </div>
+        </div>:(e.estrategia
+          ?<div style={{fontSize:13,color:T.t2,lineHeight:1.7}}>{e.estrategia}</div>
+          :<div style={{fontSize:12,color:T.t3,fontStyle:"italic"}}>Sin estrategia definida</div>)}
+      </Card>
+
+      {/* ── d) HISTORIAL ── */}
+      <Card style={{padding:13,marginBottom:20}}>
+        <Sec>Evolución semanal</Sec>
+        {historialCompleto.length===0
+          ?<div style={{textAlign:"center",color:T.t3,padding:"20px 0",fontSize:12}}>Sin historial aún.</div>
+          :historialAMostrar.map((h,i)=>{
+            const prev=historialCompleto[i+1];
+            const dP=prev?h.polizas-prev.polizas:h.polizas;
+            const dPr=prev?h.prima-prev.prima:h.prima;
+            return <div key={i} style={{paddingBottom:12,marginBottom:12,
+              borderBottom:i<historialAMostrar.length-1?`1px solid ${T.bd}`:"none"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+                <span style={{fontSize:11,fontWeight:700,color:T.azulL}}>Import del {fmtDc(h.fecha)}</span>
+                {dP>0&&<span style={{fontSize:10,fontWeight:800,color:T.verde,background:T.verdeS,
+                  borderRadius:5,padding:"1px 7px"}}>+{dP} póliza{dP>1?"s":""}</span>}
+                {dP<0&&<span style={{fontSize:10,fontWeight:800,color:T.rojo,background:T.rojoS,
+                  borderRadius:5,padding:"1px 7px"}}>{dP} (rescates)</span>}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                {[
+                  {l:"Pólizas",v:h.polizas,d:dP,c:T.azulL},
+                  {l:"Prima",v:fmt$(h.prima),d:dPr,c:T.verde,fmt:true},
+                  {l:"% obj.",v:`${pct(h.polizas,e.plan.polizasObj)}%`,d:null,c:T.ambar},
+                ].map(m=><Card key={m.l} style={{borderRadius:7,padding:8,textAlign:"center"}}>
+                  <div style={{fontSize:13,fontWeight:900,color:m.c}}>{m.v}</div>
+                  {m.d!==null&&m.d!==0&&<div style={{fontSize:9,color:m.d>0?T.verde:T.rojo,fontWeight:700}}>
+                    {m.d>0?"+":""}{m.fmt?fmt$(m.d):m.d}</div>}
+                  <div style={{fontSize:8,color:T.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
+                </Card>)}
+              </div>
+            </div>;
+          })}
+        {historialCompleto.length>5&&
+          <div style={{textAlign:"center",marginTop:4}}>
+            <button onClick={()=>setHistorialExpandido(v=>!v)} style={{background:"none",border:"none",
+              color:T.azulL,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+              {historialExpandido?"Ver menos":`Ver historial completo (${historialCompleto.length})`}
+            </button>
+          </div>}
+      </Card>
+
+      {/* ── e) CONTACTOS ── */}
+      <Card style={{padding:13,marginBottom:20}}>
+        <Sec>Contactos ({e.contactos.length})</Sec>
+        {e.contactos.length===0&&<div style={{textAlign:"center",color:T.t3,padding:"16px 0",fontSize:12}}>Sin contactos</div>}
+        {destacados.length>0&&<>
+          <Sec>Destacados</Sec>
+          {destacados.map((c,i)=>renderContacto(c,i===destacados.length-1))}
+        </>}
+        {destacados.length>0&&resto.length>0&&<div style={{marginTop:12}}><Sec>Todos</Sec></div>}
+        {resto.map((c,i)=>renderContacto(c,i===resto.length-1))}
+      </Card>
+
+      {/* ── f) FICHA ── */}
+      <Card style={{padding:13}}>
+        <Sec>Ficha</Sec>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:T.t2,textTransform:"uppercase",letterSpacing:".06em"}}>Organización</div>
+            <button onClick={()=>setSOrg(!showOrg)} style={{fontSize:11,color:T.azulL,background:"transparent",
+              border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,
+              display:"inline-flex",alignItems:"center",gap:4}}>
+              {showOrg?"Cancelar":<><Icon name="edit" size={11}/> Editar</>}</button>
+          </div>
+          {showOrg?<div>
+            <select value={fOrgId} disabled={fExterno} onChange={ev=>setFOrgId(ev.target.value)}
+              style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,fontSize:13,
+                fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:fExterno?T.s4:T.s3,
+                color:fExterno?T.t3:T.t1,opacity:fExterno?.6:1,marginBottom:8}}>
+              <option value="">Seleccionar organización...</option>
+              {organizadores.map(o=><option key={o.id} value={o.id}>{o.razon_social}</option>)}
+            </select>
+            <label style={{display:"flex",alignItems:"center",gap:7,marginBottom:8,cursor:"pointer"}}>
+              <input type="checkbox" checked={fExterno}
+                onChange={ev=>{const v=ev.target.checked;setFExterno(v);if(v)setFOrgId("");}}/>
+              <span style={{fontSize:12,color:T.t2}}>Es externo (sin organización)</span>
+            </label>
+            {orgErr&&<div style={{fontSize:11,color:T.rojo,marginBottom:8}}>{orgErr}</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+              <BtnS onClick={()=>{setSOrg(false);setFOrgId(e.organizador_id||"");setFExterno(e.es_externo||false);setOrgErr(null);}}>Cancelar</BtnS>
+              <BtnP onClick={guardOrg} color={T.verde} style={{display:"inline-flex",alignItems:"center",gap:5}}><Icon name="check" size={12}/> Guardar</BtnP>
+            </div>
+          </div>:(e.es_externo
+            ?<div style={{fontSize:12,color:T.t2,display:"flex",alignItems:"center",gap:5}}>
+              <span style={{width:5,height:5,borderRadius:"50%",background:T.t2,display:"inline-block"}}/>
+              Externo (sin organización)</div>
+            :<div style={{fontSize:12,color:T.t2}}>
+              {organizadores.find(o=>o.id===e.organizador_id)?.razon_social || "Sin asignar"}
+            </div>)}
+        </div>
+        <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:12}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.t2,textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>Datos de contacto</div>
+          {[["phone","Teléfono",e.tel],["mail","Email",e.email]].map(([ico,l,v])=>
+            <div key={l} style={{display:"flex",justifyContent:"space-between",
+              padding:"7px 0",borderBottom:`1px solid ${T.bd}`}}>
+              <span style={{fontSize:11,color:T.t3,display:"flex",alignItems:"center",gap:5}}><Icon name={ico} size={11}/>{l}</span>
+              <span style={{fontSize:12,fontWeight:600,color:T.t1}}>{v||"—"}</span>
+            </div>)}
+          {e.notas&&<div style={{fontSize:12,color:T.t2,lineHeight:1.6,marginTop:10}}>{e.notas}</div>}
+        </div>
+      </Card>
     </div>
   </div>;
 }
