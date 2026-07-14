@@ -38,7 +38,7 @@ export default function PanelEquipo({esps,onVer,onNuevo}) {
         <BtnP onClick={onNuevo}>＋ Nuevo</BtnP>
       </div>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(360px,1fr))",gap:12}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12}}>
       {lista.map(e=><TarjetaEsp key={e.id} e={e} onPress={()=>onVer(e)}/>)}
     </div>
   </div>;

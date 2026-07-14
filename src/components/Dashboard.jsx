@@ -25,25 +25,25 @@ export default function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportu
     </div>
 
     {/* KPI strip */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8,marginBottom:20}}>
       {[
         {l:"Pólizas",v:totP,sub:`obj ${objP}`,c:T.t1,   p:pct(totP,objP)},
-        {l:"Prima",  v:fmt$(totPr),sub:`obj ${fmt$(objPr)}`,c:T.verde, p:pct(totPr,objPr)},
-        {l:"En ritmo",v:enR,sub:`de ${esps.length} esp.`,c:T.verde,p:null},
-        {l:"Atrasados",v:atr,sub:"requieren acción",c:T.rojo,p:null},
+        {l:"Prima",  v:fmt$(totPr),sub:`obj ${fmt$(objPr)}`,c:T.t1, p:pct(totPr,objPr)},
+        {l:"En ritmo",v:enR,sub:`de ${esps.length} esp.`,c:enR>0?T.verde:T.t3,p:null},
+        {l:"Atrasados",v:atr,sub:"requieren acción",c:atr>0?T.rojo:T.t3,p:null},
         {l:"Rescates",v:res,sub:"última semana",c:res>0?T.rojo:T.t3,p:null},
         {l:"Oportunidad sin explotar",v:fmt$(oportunidadTotal||0),sub:"fuerza comercial",c:oportunidadTotal>0?T.verde:T.t3,p:null,
           title:"Suma de lo que cada organizador podría generar en prima de retiro si convirtiera su cartera SG+ART al ritmo del mejor organizador del período (índice propio de NEXO, no de FP — ver detalle en su ficha)."},
       ].map(k=>{
         const grande = String(k.v).length>7;
-        return <Card key={k.l} title={k.title} style={{padding:"16px 18px",position:"relative",
+        return <Card key={k.l} title={k.title} style={{padding:"13px 16px",position:"relative",
           border:"1px solid var(--hairline)",cursor:k.title?"help":"default"}}>
         <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{k.l}</div>
-        <Num style={{display:"block",fontSize:grande?18:26,fontWeight:900,color:k.c,
+        <Num style={{display:"block",fontSize:grande?16:22,fontWeight:900,color:k.c,
           letterSpacing:grande?"-.3px":"-1px",lineHeight:1}}>{k.v}</Num>
         {k.p!==null&&<div style={{marginTop:7}}>
-          <Barra val={k.p} tot={100} color={k.c} h={4}/>
-          <div style={{fontSize:10,color:k.c,fontWeight:700,marginTop:3}}>{k.p}%</div>
+          <Barra val={k.p} tot={100} color={T.azul} h={4}/>
+          <div style={{fontSize:10,color:T.azul,fontWeight:700,marginTop:3}}>{k.p}%</div>
         </div>}
         <div style={{fontSize:10,color:T.t3,marginTop:k.p!==null?0:6}}>{k.sub}</div>
       </Card>;})}

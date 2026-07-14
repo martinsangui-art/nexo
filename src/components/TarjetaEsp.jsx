@@ -57,11 +57,11 @@ export default function TarjetaEsp({e,onPress}) {
         marginBottom:10,padding:"8px 10px",background:T.s3,borderRadius:8}}>
         <div>
           <div style={{fontSize:9,color:T.t3,textTransform:"uppercase",letterSpacing:".06em",marginBottom:2}}>Prima mensual</div>
-          <Num style={{display:"block",fontSize:16,fontWeight:900,color:T.verde}}>{fmt$(e.avance.prima)}</Num>
+          <Num style={{display:"block",fontSize:16,fontWeight:900,color:T.t1}}>{fmt$(e.avance.prima)}</Num>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:9,color:T.t3,marginBottom:2}}>obj. {fmt$(e.plan.primaObj)}</div>
-          <div style={{fontSize:12,fontWeight:700,color:T.verde}}>{pct(e.avance.prima,e.plan.primaObj)}%</div>
+          <div style={{fontSize:12,fontWeight:700,color:T.t2}}>{pct(e.avance.prima,e.plan.primaObj)}%</div>
         </div>
       </div>
 
