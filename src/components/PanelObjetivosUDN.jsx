@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { T, fmt$, fmtN, Card, Inp, BtnP, BtnS, Icon, Num } from "../lib/ui.jsx";
+import { T, fmt$, fmtN, Card, Inp, BtnP, BtnS, Icon } from "../lib/ui.jsx";
 import { clasificarCrecimiento, clasificarPremio, clasificarRescate, mesDePeriodo } from "../lib/udnObjetivos";
 
 const NIVEL_LABEL = { verde: "En ritmo", ambar: "Atención", rojo: "Atrasado", sin_datos: "Sin datos" };

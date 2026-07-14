@@ -53,13 +53,6 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
   const vAct=parseFloat(velocidadActual(e));
   const vNec=parseFloat(ritmoNecesario(e)||0);
 
-  const TA = ({c,children}) =>
-    <textarea value={c.val} onChange={ev=>c.set(ev.target.value)} rows={c.rows||3}
-      style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
-        fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",
-        background:T.s3,color:T.t1,resize:"none",marginBottom:8}}>
-      {children}</textarea>;
-
   const btnAccionStyle = habilitado => ({padding:"8px 16px",border:`1.5px solid ${T.bd2}`,borderRadius:8,
     background:"transparent",color:T.t2,fontSize:13,fontWeight:600,fontFamily:"inherit",
     display:"inline-flex",alignItems:"center",gap:6,
@@ -135,8 +128,8 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:10}}>
         {[
           {l:"Pólizas",v:`${e.avance.polizas}/${e.plan.polizasObj}`,p:pp,c:T.azulL},
-          {l:"Prima",  v:fmt$(e.avance.prima),p:ppr,c:T.verde},
-          {l:"Comisión",v:fmt$(e.avance.comision),p:null,c:T.ambar},
+          {l:"Prima",  v:fmt$(e.avance.prima),p:ppr,c:T.t1},
+          {l:"Comisión",v:fmt$(e.avance.comision),p:null,c:T.t1},
           {l:"Quedan", v:dr!==null?(dr>0?`${dr}d`:"Vcdo"):"—",p:null,c:dr!==null&&dr<21?T.ambar:T.t2},
           {l:"Mails",  v:e.mails||0,p:null,c:T.azulL},
         ].map(k=><Card key={k.l} style={{borderRadius:7,padding:"7px 4px",textAlign:"center"}}>
@@ -251,7 +244,9 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
           </div>
           <div style={{textAlign:"center"}}>
             <div style={{fontSize:10,color:T.t3,marginBottom:2}}>Vel. actual</div>
-            <div style={{fontSize:14,fontWeight:700,color:s.c}}>{vAct}<span style={{fontSize:10,color:T.t3}}>/sem</span></div>
+            <div style={{fontSize:14,fontWeight:700,color:s.c}}>{vAct}
+              <span style={{fontSize:10,color:T.t3,fontWeight:400}}>/{vNec} nec.</span>
+            </div>
           </div>
         </div>
       </Card>
@@ -405,8 +400,8 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
                 {[
                   {l:"Pólizas",v:h.polizas,d:dP,c:T.azulL},
-                  {l:"Prima",v:fmt$(h.prima),d:dPr,c:T.verde,fmt:true},
-                  {l:"% obj.",v:`${pct(h.polizas,e.plan.polizasObj)}%`,d:null,c:T.ambar},
+                  {l:"Prima",v:fmt$(h.prima),d:dPr,c:T.t1,fmt:true},
+                  {l:"% obj.",v:`${pct(h.polizas,e.plan.polizasObj)}%`,d:null,c:T.t1},
                 ].map(m=><Card key={m.l} style={{borderRadius:7,padding:8,textAlign:"center"}}>
                   <div style={{fontSize:13,fontWeight:900,color:m.c}}>{m.v}</div>
                   {m.d!==null&&m.d!==0&&<div style={{fontSize:9,color:m.d>0?T.verde:T.rojo,fontWeight:700}}>

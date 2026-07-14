@@ -114,7 +114,7 @@ export async function importarSignosDesdeArchivos(files, { supabase, profileId }
 
   // Los reportes tipo "organizador" primero: pueden crear organizadores nuevos
   // que un reporte "productor" del mismo lote necesite para resolverse.
-  const ordenados = [...reportes].sort((a, b) => (a.tipo_reporte === "organizador" ? -1 : 1));
+  const ordenados = [...reportes].sort((a) => (a.tipo_reporte === "organizador" ? -1 : 1));
 
   for (const reporte of ordenados) {
     if (reporte.tipo_reporte === "organizador") {

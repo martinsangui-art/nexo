@@ -62,7 +62,7 @@ export default function App() {
   const { especialistas, loading: espLoading, error: espError, refetch } = useEspecialistas();
   const { contactos: contactosDB, refetch: refetchContactos } = useContactos();
   const { organizadores, loading: orgLoading, error: orgError, agregarOrganizador, refetch: refetchOrganizadores } = useOrganizadores(user?.id);
-  const { polizas, refetch: refetchPolizas } = usePolizas();
+  const { polizas } = usePolizas();
   const { organizadorCodigos, refetch: refetchOrganizadorCodigos } = useOrganizadorCodigos();
   const { organizadorKpis, refetch: refetchOrganizadorKpis } = useOrganizadorKpis();
   const { objetivos: udnObjetivos, avanceMensual: udnAvanceMensual, loading: udnLoading, error: udnError,
@@ -250,7 +250,7 @@ export default function App() {
   }
 
   async function agregar(datosNuevoEspecialista) {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('especialistas')
       .insert([{
         nombre: datosNuevoEspecialista.nombre,

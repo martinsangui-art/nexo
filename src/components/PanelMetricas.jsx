@@ -17,8 +17,8 @@ export default function PanelMetricas({esps,onVer}) {
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
       {[
         {l:"Pólizas totales",v:`${totP} / ${objP}`,sub:`${pct(totP,objP)}% del objetivo`,c:T.azul,bar:[totP,objP]},
-        {l:"Prima acumulada",v:fmt$(totPr),sub:`de ${fmt$(objPr)} · ${pct(totPr,objPr)}%`,c:T.verde,bar:[totPr,objPr]},
-        {l:"Comisión devengada",v:fmt$(totC),sub:"total del período",c:T.ambar,bar:null},
+        {l:"Prima acumulada",v:fmt$(totPr),sub:`de ${fmt$(objPr)} · ${pct(totPr,objPr)}%`,c:T.azul,bar:[totPr,objPr]},
+        {l:"Comisión devengada",v:fmt$(totC),sub:"total del período",c:T.t1,bar:null},
       ].map(k=><Card key={k.l} style={{padding:"16px 18px"}}>
         <div style={{fontSize:10,color:T.t3,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{k.l}</div>
         <div style={{fontSize:22,fontWeight:900,color:k.c,letterSpacing:"-.5px",marginBottom:6}}>{k.v}</div>
@@ -63,7 +63,7 @@ export default function PanelMetricas({esps,onVer}) {
       {/* Ranking prima */}
       <Card style={{padding:18}}>
         <Sec>Ranking · prima mensual</Sec>
-        {[...esps].sort((a,b)=>b.avance.prima-a.avance.prima).map((e,i)=>{
+        {[...esps].sort((a,b)=>b.avance.prima-a.avance.prima).map(e=>{
           const s=sem(e), pp=pct(e.avance.prima,e.plan.primaObj);
           return <div key={e.id} onClick={()=>onVer(e)}
             style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,cursor:"pointer"}}>
@@ -72,19 +72,19 @@ export default function PanelMetricas({esps,onVer}) {
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
                 <span style={{fontSize:13,color:T.t1,fontWeight:600,overflow:"hidden",
                   textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.nombre}</span>
-                <span style={{fontSize:13,fontWeight:900,color:T.verde,flexShrink:0,marginLeft:8}}>
+                <span style={{fontSize:13,fontWeight:900,color:s.c,flexShrink:0,marginLeft:8}}>
                   {fmt$(e.avance.prima)}
                 </span>
               </div>
-              <Barra val={pp} tot={100} color={T.verde} h={5}/>
+              <Barra val={pp} tot={100} color={s.c} h={5}/>
             </div>
-            <span style={{fontSize:10,color:T.verde,fontWeight:700,flexShrink:0,width:30,textAlign:"right"}}>{pp}%</span>
+            <span style={{fontSize:10,color:s.c,fontWeight:700,flexShrink:0,width:30,textAlign:"right"}}>{pp}%</span>
           </div>;
         })}
         <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:4}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
             <span style={{fontSize:12,color:T.t2}}>Total equipo</span>
-            <span style={{fontSize:14,fontWeight:900,color:T.verde}}>{fmt$(totPr)} · {pct(totPr,objPr)}%</span>
+            <span style={{fontSize:14,fontWeight:900,color:T.azulL}}>{fmt$(totPr)} · {pct(totPr,objPr)}%</span>
           </div>
           <Barra val={totPr} tot={objPr} color={T.verde} h={7}/>
         </div>

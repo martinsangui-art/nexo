@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { T, fmt$, fmtN, Card, Sec, BtnS, Icon, Num } from "../lib/ui.jsx";
+import { T, fmt$, fmtN, Card, Sec, Icon, Num } from "../lib/ui.jsx";
 import { calcularIndicePenetracion, calcularOportunidad, clasificarIndice } from "../lib/fuerzaComercial";
 
 const BADGE_LABEL = { rojo: "Cartera fuerte, retiro casi nulo", ambar: "Por debajo del benchmark", verde: "Convertido", sin_datos: "Sin datos suficientes" };

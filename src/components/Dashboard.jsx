@@ -107,7 +107,7 @@ export default function Dashboard({esps,onVer,onNuevo,loadingEsp,errorEsp,oportu
                     <div style={{fontSize:9,color:T.t3,marginTop:1}}>{vAct}/<span style={{color:s.c}}>{vNec}</span> p/sem</div>
                   </td>
                   <td style={{padding:"11px 12px",textAlign:"center",fontSize:12,
-                    fontWeight:700,color:T.verde}}>{fmt$(e.avance.prima)}</td>
+                    fontWeight:700,color:T.t1}}>{fmt$(e.avance.prima)}</td>
                   <td style={{padding:"11px 12px",textAlign:"center"}}><SemTag e={e} sm/></td>
                   <td style={{padding:"11px 12px",textAlign:"center"}}>
                     <span style={{fontSize:11,color:dsc>7?T.ambar:T.t3,fontWeight:dsc>7?700:400}}>
