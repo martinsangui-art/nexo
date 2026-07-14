@@ -253,9 +253,9 @@ export default function PanelDetalle({esp,onCerrar,onGuardar,onContacto,organiza
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
         {[
-          {l:"Prima mensual",v:fmt$(e.avance.prima),o:fmt$(e.plan.primaObj),p:ppr,c:T.verde},
+          {l:"Prima mensual",v:fmt$(e.avance.prima),o:fmt$(e.plan.primaObj),p:ppr,c:T.t1},
           {l:"Comisión",v:fmt$(e.avance.comision),
-            o:fmt$(Math.round(e.avance.prima*e.plan.comPct/100)),p:null,c:T.ambar},
+            o:fmt$(Math.round(e.avance.prima*e.plan.comPct/100)),p:null,c:T.t1},
         ].map(k=><Card key={k.l} style={{padding:11}}>
           <Sec>{k.l}</Sec>
           <div style={{fontSize:18,fontWeight:900,color:k.c,marginBottom:k.p!==null?6:2}}>{k.v}</div>
