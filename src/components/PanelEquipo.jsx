@@ -10,7 +10,7 @@ export default function PanelEquipo({esps,onVer,onNuevo}) {
     let arr=esps.filter(e=>
       e.nombre.toLowerCase().includes(busq.toLowerCase())||
       e.org.toLowerCase().includes(busq.toLowerCase()));
-    const order={Atrasado:0,"En riesgo":1,"En ritmo":2,"Sin plan":3};
+    const order={Atrasado:0,"Plan incompleto":1,"En riesgo":2,"En ritmo":3,"Sin plan":4};
     if(ord==="semaforo") arr=[...arr].sort((a,b)=>(order[sem(a).label]||9)-(order[sem(b).label]||9));
     if(ord==="polizas")  arr=[...arr].sort((a,b)=>b.avance.polizas-a.avance.polizas);
     if(ord==="prima")    arr=[...arr].sort((a,b)=>b.avance.prima-a.avance.prima);

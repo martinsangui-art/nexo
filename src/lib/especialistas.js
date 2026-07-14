@@ -15,7 +15,12 @@ export const dD    = d => {
 // Semáforo: brecha entre % tiempo consumido y % objetivo alcanzado
 export const sem = e => {
   const {plan,avance} = e;
-  if(!plan.fechaFin||!plan.fechaInicio) return {c:T.t3,bg:T.s3,label:"Sin plan",nivel:3};
+  const tieneAlgo = plan.fechaInicio || plan.fechaFin || plan.polizasObj || plan.primaObj;
+  if(!plan.fechaFin||!plan.fechaInicio) {
+    return tieneAlgo
+      ? {c:T.ambar, bg:T.ambarS, label:"Plan incompleto", nivel:1}
+      : {c:T.t3, bg:T.s3, label:"Sin plan", nivel:3};
+  }
   const tot = Math.max((new Date(plan.fechaFin)-new Date(plan.fechaInicio))/86400000,1);
   const pas = Math.max(Math.min((HOY-new Date(plan.fechaInicio))/86400000,tot),0);
   const br  = (pas/tot*100) - pct(avance.polizas,plan.polizasObj);
